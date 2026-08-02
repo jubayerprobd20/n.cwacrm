@@ -5,8 +5,11 @@ import { getSupabaseUrl, getSupabaseAnonKey } from './env-utils'
 export async function createClient() {
   const cookieStore = await cookies()
 
-  const supabaseUrl = getSupabaseUrl()
-  const supabaseKey = getSupabaseAnonKey()
+  const envUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim().replace(/[^\x20-\x7E]/g, '')
+  const envKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim().replace(/[^\x20-\x7E]/g, '')
+
+  const supabaseUrl = (envUrl && envUrl.startsWith('http')) ? envUrl : getSupabaseUrl()
+  const supabaseKey = envKey || getSupabaseAnonKey()
 
   return createServerClient(
     supabaseUrl,

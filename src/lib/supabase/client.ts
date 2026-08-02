@@ -10,8 +10,11 @@ let browserClient: SupabaseClient | undefined
 export function createClient() {
   if (browserClient) return browserClient
 
-  const supabaseUrl = getSupabaseUrl()
-  const supabaseKey = getSupabaseAnonKey()
+  const envUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim().replace(/[^\x20-\x7E]/g, '')
+  const envKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim().replace(/[^\x20-\x7E]/g, '')
+
+  const supabaseUrl = (envUrl && envUrl.startsWith('http')) ? envUrl : getSupabaseUrl()
+  const supabaseKey = envKey || getSupabaseAnonKey()
 
   browserClient = createBrowserClient(
     supabaseUrl,
