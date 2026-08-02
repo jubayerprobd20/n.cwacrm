@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
@@ -37,16 +37,19 @@ export default function SettingsPage() {
   const { mode } = useTheme();
   const t = useTranslations('Settings');
 
-  // The URL (`?tab=`) is the single source of truth for the active
-  // section — deep-linkable, and it keeps the existing links in the
-  // app sidebar/header working. Legacy tab values (tags, custom-fields)
-  // resolve onto their new home; unknown/empty → the Overview landing.
-  const section = resolveSection(searchParams.get('tab'));
+  // Local state for instant 1-click tab switching without router latency
+  const urlSection = resolveSection(searchParams.get('tab'));
+  const [activeSection, setActiveSection] = useState<SettingsSection>(urlSection);
+
+  useEffect(() => {
+    setActiveSection(resolveSection(searchParams.get('tab')));
+  }, [searchParams]);
 
   const go = (next: SettingsSection) => {
+    setActiveSection(next);
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', next);
-    router.replace(`/settings?${params.toString()}`, { scroll: false });
+    window.history.replaceState(null, '', `/settings?${params.toString()}`);
   };
 
   // Cheap, fetch-free rail hints. The Overview landing carries the
@@ -92,8 +95,8 @@ export default function SettingsPage() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[236px_minmax(0,1fr)] lg:items-start">
-        <SettingsRail active={section} onSelect={go} hints={hints} />
-        <div className="min-w-0">{panel[section]}</div>
+        <SettingsRail active={activeSection} onSelect={go} hints={hints} />
+        <div className="min-w-0">{panel[activeSection]}</div>
       </div>
     </div>
   );
