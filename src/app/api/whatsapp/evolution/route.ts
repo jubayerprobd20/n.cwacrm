@@ -12,6 +12,7 @@ import {
   getEvolutionQrCode,
   logoutEvolutionInstance,
 } from '@/lib/whatsapp/evolution-client';
+import { getEvolutionApiUrl, getEvolutionApiKey } from '@/lib/supabase/env-utils';
 
 async function resolveAccountId(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -56,8 +57,8 @@ export async function GET() {
       );
     }
 
-    const evoBaseUrl = (config.evolution_base_url || process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '').trim();
-    const evoApiKey = (config.evolution_api_key || process.env.EVOLUTION_API_KEY || process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || '').trim();
+    const evoBaseUrl = getEvolutionApiUrl(config.evolution_base_url);
+    const evoApiKey = getEvolutionApiKey(config.evolution_api_key);
     const evoInstanceName = (config.evolution_instance_name || '').trim();
 
     if (!evoBaseUrl || !evoApiKey || !evoInstanceName) {
@@ -128,13 +129,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     let { action, baseUrl, apiKey, instanceName } = body;
 
-    // Use server environment variables as fallback when user opts for Hosted/Default server
-    baseUrl = (baseUrl || process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '').trim();
-    apiKey = (apiKey || process.env.EVOLUTION_API_KEY || process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || '').trim();
+    // Use server environment variables or NextCore fallback when user opts for Hosted/Default server
+    baseUrl = getEvolutionApiUrl(baseUrl);
+    apiKey = getEvolutionApiKey(apiKey);
 
     if (!baseUrl || !apiKey || !instanceName) {
       return NextResponse.json(
-        { error: 'Evolution Server URL, API Key, and Instance Name are required (or configure EVOLUTION_API_URL and EVOLUTION_API_KEY in environment)' },
+        { error: 'Evolution Server URL, API Key, and Instance Name are required' },
         { status: 400 }
       );
     }

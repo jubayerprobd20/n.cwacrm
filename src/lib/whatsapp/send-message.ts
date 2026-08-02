@@ -30,6 +30,7 @@ import {
   type MediaKind,
 } from '@/lib/whatsapp/meta-api';
 import { sendEvolutionText, sendEvolutionMedia } from '@/lib/whatsapp/evolution-client';
+import { getEvolutionApiUrl, getEvolutionApiKey } from '@/lib/supabase/env-utils';
 import { sendWASenderText, sendWASenderMedia } from '@/lib/whatsapp/wasender-client';
 import {
   validateInteractivePayload,
@@ -334,13 +335,17 @@ export async function sendMessageToConversation(
   const attempt = async (phone: string): Promise<string> => {
     // 1. Evolution API Provider
     if (config.provider === 'evolution') {
-      if (!config.evolution_base_url || !config.evolution_api_key || !config.evolution_instance_name) {
+      const evoBaseUrl = getEvolutionApiUrl(config.evolution_base_url);
+      const evoApiKey = getEvolutionApiKey(config.evolution_api_key);
+      const evoInstanceName = (config.evolution_instance_name || '').trim();
+
+      if (!evoBaseUrl || !evoApiKey || !evoInstanceName) {
         throw new SendMessageError('evolution_not_configured', 'Evolution API is not fully configured.', 400);
       }
       const evoConfig = {
-        baseUrl: config.evolution_base_url,
-        apiKey: config.evolution_api_key,
-        instanceName: config.evolution_instance_name,
+        baseUrl: evoBaseUrl,
+        apiKey: evoApiKey,
+        instanceName: evoInstanceName,
       };
       if (isMediaKind) {
         const res = await sendEvolutionMedia(
