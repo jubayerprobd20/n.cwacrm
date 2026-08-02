@@ -191,11 +191,24 @@ export default function InboxPage() {
 
       const { data } = await supabase
         .from("whatsapp_config")
-        .select("status")
+        .select("status, evolution_instance_status, wasender_status")
         .eq("account_id", accountId)
         .maybeSingle();
 
-      setWhatsappConnected(data?.status === "connected");
+      const { data: waba } = await supabase
+        .from("waba_connections")
+        .select("status")
+        .eq("organization_id", accountId)
+        .maybeSingle();
+
+      const isConnected =
+        data?.status === "connected" ||
+        data?.evolution_instance_status === "open" ||
+        data?.evolution_instance_status === "connected" ||
+        data?.wasender_status === "connected" ||
+        waba?.status === "connected";
+
+      setWhatsappConnected(Boolean(isConnected));
     };
 
     checkConnection();

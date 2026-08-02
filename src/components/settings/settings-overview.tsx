@@ -126,7 +126,7 @@ export function SettingsOverview({
         const [legacyRow, wabaRow] = await Promise.allSettled([
           supabase
             .from('whatsapp_config')
-            .select('phone_number_id')
+            .select('phone_number_id, provider, status, evolution_instance_status, wasender_status')
             .eq('account_id', acctId)
             .maybeSingle(),
           supabase
@@ -141,14 +141,21 @@ export function SettingsOverview({
         const wabaConnected = wabaRow.status === 'fulfilled' && wabaRow.value.data?.status === 'connected';
         const wabaConfigured = wabaRow.status === 'fulfilled' && !!wabaRow.value.data?.phone_number_id;
 
-        if (wabaConnected) {
+        const legacyData = legacyRow.status === 'fulfilled' ? legacyRow.value.data : null;
+        const evoConnected =
+          legacyData?.evolution_instance_status === 'open' ||
+          legacyData?.evolution_instance_status === 'connected' ||
+          legacyData?.status === 'connected';
+        const waSenderConnected = legacyData?.wasender_status === 'connected';
+
+        if (wabaConnected || evoConnected || waSenderConnected) {
           setWhatsapp({
             configured: true,
             connected: true,
           });
         } else {
-          // Check legacy config
-          const legacyConfigured = legacyRow.status === 'fulfilled' && !!legacyRow.value.data?.phone_number_id;
+          // Check legacy config health
+          const legacyConfigured = !!legacyData?.phone_number_id || !!legacyData?.provider;
           let legacyConnected = false;
           if (legacyConfigured) {
             try {
@@ -156,7 +163,7 @@ export function SettingsOverview({
               const health = await res.json();
               legacyConnected = !!health?.connected;
             } catch {
-              // Ignore health fetch error, keep legacyConnected = false
+              // Ignore health fetch error
             }
           }
           setWhatsapp({

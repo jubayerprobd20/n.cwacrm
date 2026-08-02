@@ -28,7 +28,7 @@ async function resolveAccountId(
   return data.account_id as string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     const {
@@ -71,7 +71,20 @@ export async function GET() {
     const stateRes = await getEvolutionConnectionState(evoConfig);
     const state =
       stateRes.instance?.state || stateRes.state || 'disconnected';
-    const isConnected = state.toLowerCase() === 'open';
+    const isConnected = state.toLowerCase() === 'open' || state.toLowerCase() === 'connected';
+
+    // Construct live webhook URL using request host header so production domain is always used
+    const host = request.headers.get('host') || 'wacrm.nextcorebd.com';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    const webhookUrl = `${publicAppUrl.replace(/\/+$/, '')}/api/whatsapp/evolution-webhook`;
+
+    // Ensure webhook is registered whenever instance is connected
+    if (isConnected) {
+      setEvolutionWebhook(evoConfig, webhookUrl).catch((err) => {
+        console.warn('[evolution-api GET] Background webhook registration warning:', err);
+      });
+    }
 
     let qrcode = null;
     if (!isConnected) {
@@ -86,7 +99,7 @@ export async function GET() {
       await supabase
         .from('whatsapp_config')
         .update({
-          evolution_instance_status: state.toLowerCase(),
+          evolution_instance_status: isConnected ? 'open' : state.toLowerCase(),
           status: isConnected ? 'connected' : 'disconnected',
           updated_at: new Date().toISOString(),
         })
@@ -95,7 +108,7 @@ export async function GET() {
 
     return NextResponse.json({
       connected: isConnected,
-      status: state.toLowerCase(),
+      status: isConnected ? 'open' : state.toLowerCase(),
       qrcode,
       instanceName: evoInstanceName,
     });
@@ -162,8 +175,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, status: 'disconnected' });
     }
 
-    // Construct public webhook URL
-    const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://wacrm.jubayer.pro';
+    // Construct live webhook URL using request host header
+    const host = request.headers.get('host') || 'wacrm.nextcorebd.com';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
     const webhookUrl = `${publicAppUrl.replace(/\/+$/, '')}/api/whatsapp/evolution-webhook`;
 
     // Try creating instance first
