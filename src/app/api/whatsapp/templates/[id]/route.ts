@@ -138,11 +138,12 @@ export async function PATCH(
     }
 
     if (!isDryRun()) {
-      const { data: config, error: configError } = await supabase
+      const { data: cfgRows, error: configError } = await supabase
         .from('whatsapp_config')
         .select('*')
         .eq('account_id', accountId)
-        .single()
+        .limit(1)
+      const config = cfgRows?.[0]
       if (configError || !config) {
         return NextResponse.json(
           { error: 'WhatsApp not configured.' },
@@ -278,21 +279,22 @@ export async function DELETE(
     }
 
     if (existing.meta_template_id && !isDryRun()) {
-      const { data: config, error: configError } = await supabase
+      const { data: cfgRows2, error: configError2 } = await supabase
         .from('whatsapp_config')
         .select('*')
         .eq('account_id', accountId)
-        .single()
-      if (configError || !config || !config.waba_id) {
+        .limit(1)
+      const config2 = cfgRows2?.[0]
+      if (configError2 || !config2 || !config2.waba_id) {
         return NextResponse.json(
           { error: 'WhatsApp not configured — cannot delete on Meta.' },
           { status: 400 },
         )
       }
-      const accessToken = decrypt(config.access_token)
+      const accessToken = decrypt(config2.access_token)
       try {
         await deleteMessageTemplate({
-          wabaId: config.waba_id,
+          wabaId: config2.waba_id,
           accessToken,
           name: existing.name,
           metaTemplateId: existing.meta_template_id,
