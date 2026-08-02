@@ -14,6 +14,57 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
+-- SELF-HOSTED DIRECT POSTGRESQL COMPATIBILITY LAYER
+-- Creates auth schema, auth.users table, auth.uid() function,
+-- and supabase_realtime publication so all migrations work
+-- out of the box on standalone / raw PostgreSQL servers.
+-- ============================================================
+CREATE SCHEMA IF NOT EXISTS auth;
+
+CREATE TABLE IF NOT EXISTS auth.users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email TEXT UNIQUE,
+  raw_user_meta_data JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS UUID AS $$
+BEGIN
+  RETURN COALESCE(
+    current_setting('request.jwt.claim.sub', true),
+    (current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  )::uuid;
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN NULL::uuid;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS TEXT AS $$
+BEGIN
+  RETURN COALESCE(
+    current_setting('request.jwt.claim.role', true),
+    (current_setting('request.jwt.claims', true)::jsonb ->> 'role'),
+    'anon'
+  )::text;
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN 'anon'::text;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+END $$;
+
+
+-- ============================================================
 -- PROFILES
 -- ============================================================
 CREATE TABLE IF NOT EXISTS profiles (
