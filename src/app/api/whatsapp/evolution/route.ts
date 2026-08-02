@@ -56,7 +56,11 @@ export async function GET() {
       );
     }
 
-    if (!config.evolution_base_url || !config.evolution_api_key || !config.evolution_instance_name) {
+    const evoBaseUrl = (config.evolution_base_url || process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '').trim();
+    const evoApiKey = (config.evolution_api_key || process.env.EVOLUTION_API_KEY || process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || '').trim();
+    const evoInstanceName = (config.evolution_instance_name || '').trim();
+
+    if (!evoBaseUrl || !evoApiKey || !evoInstanceName) {
       return NextResponse.json(
         { connected: false, status: 'disconnected', message: 'Incomplete Evolution API credentials' },
         { status: 200 }
@@ -64,9 +68,9 @@ export async function GET() {
     }
 
     const evoConfig = {
-      baseUrl: config.evolution_base_url,
-      apiKey: config.evolution_api_key,
-      instanceName: config.evolution_instance_name,
+      baseUrl: evoBaseUrl,
+      apiKey: evoApiKey,
+      instanceName: evoInstanceName,
     };
 
     const stateRes = await getEvolutionConnectionState(evoConfig);
@@ -122,11 +126,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { action, baseUrl, apiKey, instanceName } = body;
+    let { action, baseUrl, apiKey, instanceName } = body;
+
+    // Use server environment variables as fallback when user opts for Hosted/Default server
+    baseUrl = (baseUrl || process.env.EVOLUTION_API_URL || process.env.NEXT_PUBLIC_EVOLUTION_API_URL || '').trim();
+    apiKey = (apiKey || process.env.EVOLUTION_API_KEY || process.env.NEXT_PUBLIC_EVOLUTION_API_KEY || '').trim();
 
     if (!baseUrl || !apiKey || !instanceName) {
       return NextResponse.json(
-        { error: 'baseUrl, apiKey, and instanceName are required' },
+        { error: 'Evolution Server URL, API Key, and Instance Name are required (or configure EVOLUTION_API_URL and EVOLUTION_API_KEY in environment)' },
         { status: 400 }
       );
     }

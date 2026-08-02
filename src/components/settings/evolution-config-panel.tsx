@@ -38,7 +38,8 @@ export function EvolutionConfigPanel({
 }: EvolutionConfigPanelProps) {
   const [baseUrl, setBaseUrl] = useState(initialBaseUrl || '');
   const [apiKey, setApiKey] = useState(initialApiKey || '');
-  const [instanceName, setInstanceName] = useState(initialInstanceName || '');
+  const [instanceName, setInstanceName] = useState(initialInstanceName || 'wacrm-instance');
+  const [useHostedServer, setUseHostedServer] = useState(!initialBaseUrl);
   const [status, setStatus] = useState(initialStatus || 'disconnected');
   const [connecting, setConnecting] = useState(false);
   const [fetchingQr, setFetchingQr] = useState(false);
@@ -47,8 +48,8 @@ export function EvolutionConfigPanel({
   const [copiedCode, setCopiedCode] = useState(false);
 
   const handleConnect = async () => {
-    if (!baseUrl || !apiKey || !instanceName) {
-      toast.error('Please enter Base URL, API Key, and Instance Name');
+    if (!instanceName || (!useHostedServer && (!baseUrl || !apiKey))) {
+      toast.error(useHostedServer ? 'Please enter an Instance Name' : 'Please enter Base URL, API Key, and Instance Name');
       return;
     }
 
@@ -60,8 +61,8 @@ export function EvolutionConfigPanel({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          baseUrl: baseUrl.trim(),
-          apiKey: apiKey.trim(),
+          baseUrl: useHostedServer ? '' : baseUrl.trim(),
+          apiKey: useHostedServer ? '' : apiKey.trim(),
           instanceName: instanceName.trim(),
         }),
       });
@@ -248,48 +249,91 @@ export function EvolutionConfigPanel({
       {/* Evolution API Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-foreground flex items-center gap-2">
-            <Server className="size-5 text-emerald-400" />
-            Evolution API Server Credentials
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Connect your self-hosted Evolution API (v1 / v2) instance to WhatsApp CRM
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <Server className="size-5 text-emerald-400" />
+                Evolution API Connection
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Connect your WhatsApp instance using Hosted (Instant) or Custom Evolution API
+              </CardDescription>
+            </div>
+
+            {/* Mode Switcher */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-900/80 rounded-xl border border-white/10 w-fit">
+              <button
+                type="button"
+                onClick={() => setUseHostedServer(true)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  useHostedServer
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                ⚡ Hosted (Instant)
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseHostedServer(false)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  !useHostedServer
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                🛠️ Custom Server
+              </button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="evo-url" className="text-foreground font-medium flex items-center gap-1.5">
-              Evolution Server Base URL
-            </Label>
-            <Input
-              id="evo-url"
-              placeholder="https://evo.yourdomain.com"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              className="font-mono text-sm"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              The public address of your Evolution API server (without trailing slash).
-            </p>
-          </div>
+          {useHostedServer ? (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-slate-300 space-y-1">
+              <p className="font-semibold text-emerald-400">⚡ Instant Server Configuration Enabled</p>
+              <p className="text-slate-400">
+                Your server URL and API Key are automatically provided by the system environment. Simply choose a name for your WhatsApp instance below and click <strong>Generate QR Code</strong>.
+              </p>
+            </div>
+          ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="evo-apikey" className="text-foreground font-medium flex items-center gap-1.5">
-              <Key className="size-3.5 text-muted-foreground" />
-              Global / Instance API Key
-            </Label>
-            <Input
-              id="evo-apikey"
-              type="password"
-              placeholder="YOUR-EVOLUTION-API-KEY"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="font-mono text-sm"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Your authentication key configured in your Evolution API environment.
-            </p>
-          </div>
+          {!useHostedServer ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="evo-url" className="text-foreground font-medium flex items-center gap-1.5">
+                  Evolution Server Base URL
+                </Label>
+                <Input
+                  id="evo-url"
+                  placeholder="https://evo.yourdomain.com"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  className="font-mono text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  The public address of your Evolution API server (without trailing slash).
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="evo-apikey" className="text-foreground font-medium flex items-center gap-1.5">
+                  <Key className="size-3.5 text-muted-foreground" />
+                  Global / Instance API Key
+                </Label>
+                <Input
+                  id="evo-apikey"
+                  type="password"
+                  placeholder="YOUR-EVOLUTION-API-KEY"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="font-mono text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Your authentication key configured in your Evolution API environment.
+                </p>
+              </div>
+            </>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="evo-instance" className="text-foreground font-medium flex items-center gap-1.5">
@@ -304,7 +348,7 @@ export function EvolutionConfigPanel({
               className="font-mono text-sm"
             />
             <p className="text-[11px] text-muted-foreground">
-              The name of the WhatsApp instance you want to create or connect to.
+              A unique name for your WhatsApp connection (e.g. business-wa).
             </p>
           </div>
 
@@ -312,22 +356,24 @@ export function EvolutionConfigPanel({
             <Button
               onClick={handleConnect}
               disabled={connecting}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-[0_0_15px_rgba(16,185,129,0.3)]"
             >
               {connecting ? (
                 <>
                   <Loader2 className="size-4 animate-spin mr-2" />
                   Connecting Instance...
                 </>
+              ) : useHostedServer ? (
+                <>Generate QR Code &amp; Connect</>
               ) : (
-                <>Save & Connect Instance</>
+                <>Save &amp; Connect Instance</>
               )}
             </Button>
 
             <Button
               variant="outline"
               onClick={handleFetchQr}
-              disabled={fetchingQr || !baseUrl || !apiKey || !instanceName}
+              disabled={fetchingQr || !instanceName || (!useHostedServer && (!baseUrl || !apiKey))}
             >
               {fetchingQr ? (
                 <>
