@@ -38,11 +38,14 @@ export async function GET() {
       return NextResponse.json({ error: 'No account linked' }, { status: 403 });
     }
 
-    const { data: config, error: configErr } = await supabase
+    const { data: configs, error: configErr } = await supabase
       .from('whatsapp_config')
       .select('*')
       .eq('account_id', accountId)
-      .maybeSingle();
+      .eq('provider', 'wasender')
+      .limit(1);
+
+    const config = configs?.[0];
 
     if (configErr || !config || config.provider !== 'wasender') {
       return NextResponse.json(
@@ -148,11 +151,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const { data: existingRow } = await supabase
+    const { data: existingRows } = await supabase
       .from('whatsapp_config')
       .select('id')
       .eq('account_id', accountId)
-      .maybeSingle();
+      .limit(1);
+
+    const existingRow = existingRows?.[0];
 
     const configPayload = {
       provider: 'wasender',

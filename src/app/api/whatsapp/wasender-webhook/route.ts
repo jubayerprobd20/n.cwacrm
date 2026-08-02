@@ -5,7 +5,7 @@
 // processing pipeline.
 // ============================================================
 
-import { NextResponse, after } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { processInboundWhatsAppMessage } from '@/lib/whatsapp/inbound-handler';
 
@@ -32,13 +32,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  after(async () => {
-    try {
-      await processWASenderWebhook(body);
-    } catch (error) {
-      console.error('[wasender-webhook] Error processing webhook:', error);
-    }
-  });
+  // Process directly (not via after()) for Vercel compatibility
+  try {
+    await processWASenderWebhook(body);
+  } catch (error) {
+    console.error('[wasender-webhook] Error processing webhook:', error);
+  }
 
   return NextResponse.json({ status: 'received' }, { status: 200 });
 }

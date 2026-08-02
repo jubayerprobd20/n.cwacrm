@@ -131,11 +131,12 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
     throw new Error(`contact phone invalid: ${contact.phone}`)
   }
 
-  const { data: config, error: configErr } = await db
+  const { data: cfgRows, error: configErr } = await db
     .from('whatsapp_config')
     .select('*')
     .eq('account_id', input.accountId)
-    .single()
+    .limit(1)
+  const config = cfgRows?.[0]
   if (configErr || !config) {
     throw new Error('WhatsApp not configured for this account')
   }

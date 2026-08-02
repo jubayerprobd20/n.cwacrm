@@ -82,11 +82,12 @@ export async function engineSendText(
     throw new Error(`contact phone invalid: ${contact.phone}`)
   }
 
-  const { data: config, error: configErr } = await db
+  const { data: cfgRows, error: configErr } = await db
     .from('whatsapp_config')
     .select('*')
     .eq('account_id', args.accountId)
-    .single()
+    .limit(1)
+  const config = cfgRows?.[0]
   if (configErr || !config) {
     throw new Error('WhatsApp not configured for this account')
   }
@@ -193,20 +194,21 @@ export async function engineSendMedia(
     throw new Error(`contact phone invalid: ${contact.phone}`)
   }
 
-  const { data: config, error: configErr } = await db
+  const { data: cfgRows2, error: configErr2 } = await db
     .from('whatsapp_config')
     .select('*')
     .eq('account_id', args.accountId)
-    .single()
-  if (configErr || !config) {
+    .limit(1)
+  const config2 = cfgRows2?.[0]
+  if (configErr2 || !config2) {
     throw new Error('WhatsApp not configured for this account')
   }
 
-  const accessToken = decrypt(config.access_token)
+  const accessToken = decrypt(config2.access_token)
 
   const attempt = async (phone: string): Promise<string> => {
     const r = await sendMediaMessage({
-      phoneNumberId: config.phone_number_id,
+      phoneNumberId: config2.phone_number_id,
       accessToken,
       to: phone,
       kind: args.kind,
@@ -346,21 +348,22 @@ async function sendInteractiveViaMeta(
     throw new Error(`contact phone invalid: ${contact.phone}`)
   }
 
-  const { data: config, error: configErr } = await db
+  const { data: cfgRows3, error: configErr3 } = await db
     .from('whatsapp_config')
     .select('*')
     .eq('account_id', input.accountId)
-    .single()
-  if (configErr || !config) {
+    .limit(1)
+  const config3 = cfgRows3?.[0]
+  if (configErr3 || !config3) {
     throw new Error('WhatsApp not configured for this account')
   }
 
-  const accessToken = decrypt(config.access_token)
+  const accessToken = decrypt(config3.access_token)
 
   const attempt = async (phone: string): Promise<string> => {
     if (input.kind === 'buttons') {
       const r = await sendInteractiveButtons({
-        phoneNumberId: config.phone_number_id,
+        phoneNumberId: config3.phone_number_id,
         accessToken,
         to: phone,
         bodyText: input.bodyText,
@@ -371,7 +374,7 @@ async function sendInteractiveViaMeta(
       return r.messageId
     }
     const r = await sendInteractiveList({
-      phoneNumberId: config.phone_number_id,
+      phoneNumberId: config3.phone_number_id,
       accessToken,
       to: phone,
       bodyText: input.bodyText,

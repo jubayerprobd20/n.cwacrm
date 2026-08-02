@@ -142,17 +142,32 @@ export function WhatsAppConfig() {
       // account sees the same saved configuration. UNIQUE(account_id)
       // on the table guarantees the .maybeSingle() return type
       // remains accurate.
-      const { data, error } = await supabase
+      const { data: configRows, error } = await supabase
         .from('whatsapp_config')
         .select('*')
         .eq('account_id', acctId)
-        .maybeSingle();
+        .limit(1);
 
       if (error) {
         console.error('Failed to load config row:', error);
       }
 
+      const data = configRows?.[0] ?? null;
+
       if (data) {
+        // If provider is evolution, auto-check live status right now
+        if (data.provider === 'evolution') {
+          try {
+            const liveRes = await fetch('/api/whatsapp/evolution', { method: 'GET' });
+            const liveData = await liveRes.json();
+            if (liveData.connected || liveData.status === 'open' || liveData.status === 'connected') {
+              data.evolution_instance_status = 'open';
+              data.status = 'connected';
+            }
+          } catch {
+            // ignore — use DB status as fallback
+          }
+        }
         setConfig(data);
         setPhoneNumberId(data.phone_number_id || '');
         setWabaId(data.waba_id || '');

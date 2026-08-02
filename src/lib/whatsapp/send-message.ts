@@ -251,11 +251,13 @@ export async function sendMessageToConversation(
   }
 
   // WhatsApp config, account-scoped.
-  const { data: config, error: configError } = await db
+  const { data: configRows, error: configError } = await db
     .from('whatsapp_config')
     .select('*')
     .eq('account_id', accountId)
-    .single();
+    .limit(1);
+
+  const config = configRows?.[0];
 
   if (configError || !config) {
     throw new SendMessageError(
