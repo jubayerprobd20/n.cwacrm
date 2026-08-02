@@ -152,29 +152,25 @@ export function SettingsOverview({
             Boolean(r.phone_number_id)
         );
 
-        if (wabaConnected || evoConnected) {
-          setWhatsapp({
-            configured: true,
-            connected: true,
-          });
-        } else {
-          // Check legacy config health
-          const legacyConfigured = legacyRows.some((r) => !!r.phone_number_id || !!r.provider);
-          let legacyConnected = false;
-          if (legacyConfigured) {
-            try {
-              const res = await fetch('/api/whatsapp/config', { cache: 'no-store' });
-              const health = await res.json();
-              legacyConnected = !!health?.connected;
-            } catch {
-              // Ignore health fetch error
+        let isConnected = wabaConnected || evoConnected;
+        let isConfigured = wabaConfigured || legacyRows.some((r) => !!r.phone_number_id || !!r.provider || !!r.evolution_instance_name || !!r.wasender_api_key);
+
+        if (!isConnected && isConfigured) {
+          try {
+            const res = await fetch('/api/whatsapp/evolution', { method: 'GET' });
+            const health = await res.json();
+            if (health?.connected || health?.status === 'open' || health?.status === 'connected') {
+              isConnected = true;
             }
+          } catch {
+            // ignore network error
           }
-          setWhatsapp({
-            configured: wabaConfigured || legacyConfigured,
-            connected: legacyConnected,
-          });
         }
+
+        setWhatsapp({
+          configured: isConfigured || isConnected,
+          connected: isConnected,
+        });
       } catch (err) {
         console.error('SettingsOverview WhatsApp status check error:', err);
       } finally {

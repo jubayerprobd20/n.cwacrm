@@ -53,9 +53,37 @@ export function EvolutionConfigPanel({
 
   const isConnected = status === 'open' || status === 'connected';
 
-  // AUTO-POLLING: While QR code is shown and not connected, check live connection status every 3 seconds!
+  // AUTO-CHECK ON MOUNT: Whenever an instance name exists, immediately verify live connection status with Evolution API server!
   useEffect(() => {
-    if (!qrCode || isConnected) return;
+    if (!instanceName) return;
+    let isMounted = true;
+    const checkLive = async () => {
+      try {
+        const res = await fetch('/api/whatsapp/evolution', { method: 'GET' });
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data.connected || data.status === 'open' || data.status === 'connected') {
+            setStatus('open');
+            setQrCode(null);
+            onConfigSaved();
+          } else if (data.qrcode && !isConnected) {
+            setQrCode(data.qrcode);
+            setStatus(data.status || 'disconnected');
+          }
+        }
+      } catch {
+        // ignore network error
+      }
+    };
+    checkLive();
+    return () => {
+      isMounted = false;
+    };
+  }, [instanceName]);
+
+  // CONTINUOUS AUTO-POLLING: Check live connection status every 4 seconds when instance is configured
+  useEffect(() => {
+    if (!instanceName) return;
 
     const interval = setInterval(async () => {
       try {
@@ -65,19 +93,19 @@ export function EvolutionConfigPanel({
           if (data.connected || data.status === 'open' || data.status === 'connected') {
             setStatus('open');
             setQrCode(null);
-            toast.success('🎉 WhatsApp connected successfully! Ready to broadcast & receive messages.');
             onConfigSaved();
-          } else if (data.qrcode) {
+          } else if (data.qrcode && !isConnected) {
             setQrCode(data.qrcode);
+            setStatus(data.status || 'disconnected');
           }
         }
       } catch {
         // ignore temporary network errors during polling
       }
-    }, 3000);
+    }, 4000);
 
     return () => clearInterval(interval);
-  }, [qrCode, isConnected, onConfigSaved]);
+  }, [instanceName, isConnected, onConfigSaved]);
 
   const handleConnect = async () => {
     if (!instanceName || (!useHostedServer && (!baseUrl || !apiKey))) {

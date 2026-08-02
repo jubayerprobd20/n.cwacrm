@@ -45,11 +45,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No account linked' }, { status: 403 });
     }
 
-    const { data: config, error: configErr } = await supabase
+    const { data: configs, error: configErr } = await supabase
       .from('whatsapp_config')
       .select('*')
       .eq('account_id', accountId)
-      .maybeSingle();
+      .limit(1);
+
+    const config = configs?.[0];
 
     const evoBaseUrl = getEvolutionApiUrl(config?.evolution_base_url);
     const evoApiKey = getEvolutionApiKey(config?.evolution_api_key);
@@ -211,11 +213,13 @@ export async function POST(request: Request) {
     const isConnected = state.toLowerCase() === 'open';
 
     // Check if existing config row exists
-    const { data: existingRow } = await supabase
+    const { data: existingRows } = await supabase
       .from('whatsapp_config')
       .select('id')
       .eq('account_id', accountId)
-      .maybeSingle();
+      .limit(1);
+
+    const existingRow = existingRows?.[0];
 
     const configPayload = {
       provider: 'evolution',
