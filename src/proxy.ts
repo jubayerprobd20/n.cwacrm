@@ -92,7 +92,10 @@ export async function proxy(request: NextRequest) {
   // Cookie propagation helper
   const withRefreshedCookies = <T extends NextResponse>(response: T): T => {
     supabaseResponse.cookies.getAll().forEach((cookie) => {
-      response.cookies.set(cookie)
+      response.cookies.set(cookie.name, cookie.value, {
+        path: "/",
+        ...cookie,
+      })
     })
     return response
   }

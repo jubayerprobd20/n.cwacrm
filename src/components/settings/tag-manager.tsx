@@ -105,6 +105,7 @@ export function TagManager() {
       const { error } = await supabase.from('tags').insert({
         user_id: user.id,
         account_id: accountId,
+        organization_id: accountId,
         name: newTagName.trim(),
         color: selectedColor,
       });

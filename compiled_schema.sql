@@ -279,7 +279,7 @@ CREATE TABLE IF NOT EXISTS deals (
   conversation_id UUID REFERENCES conversations(id),
   title TEXT NOT NULL,
   value NUMERIC(12,2) NOT NULL DEFAULT 0,
-  currency TEXT DEFAULT 'USD',
+  currency TEXT DEFAULT 'BDT',
   notes TEXT,
   expected_close_date DATE,
   status TEXT DEFAULT 'active',
@@ -3357,7 +3357,7 @@ CREATE POLICY "Members can delete flow media"
 -- ============================================================
 
 ALTER TABLE accounts
-  ADD COLUMN IF NOT EXISTS default_currency TEXT NOT NULL DEFAULT 'USD';
+  ADD COLUMN IF NOT EXISTS default_currency TEXT NOT NULL DEFAULT 'BDT';
 
 -- Keep the value an ISO-4217-shaped 3-letter uppercase code without
 -- pinning to a fixed enum — forks can use any currency Intl supports.
@@ -3708,12 +3708,13 @@ BEGIN
     RAISE EXCEPTION 'No account for caller' USING ERRCODE = '22023';
   END IF;
 
-  INSERT INTO member_presence (user_id, account_id, status, last_seen_at)
-  VALUES (auth.uid(), v_account_id, p_status, now())
+  INSERT INTO member_presence (user_id, account_id, status, last_seen_at, organization_id)
+  VALUES (auth.uid(), v_account_id, p_status, now(), v_account_id)
   ON CONFLICT (user_id) DO UPDATE
-    SET status       = excluded.status,
-        last_seen_at = now(),
-        account_id   = excluded.account_id;
+    SET status          = excluded.status,
+        last_seen_at    = now(),
+        account_id      = excluded.account_id,
+        organization_id = excluded.organization_id;
 END;
 $$;
 

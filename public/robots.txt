@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://wacrm.tech/sitemap.xml
+Sitemap: https://wacrm.nextcorebd.com/sitemap.xml
 
 # Crawl delay for better server performance
 Crawl-delay: 2

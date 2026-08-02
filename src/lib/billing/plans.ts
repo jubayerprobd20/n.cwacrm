@@ -1,7 +1,7 @@
 export interface PlanTier {
   plan_id: string;
   name: string;
-  price: number; // in INR
+  price: number; // in BDT
   message_quota: number; // monthly broadcast message limit
   contact_limit: number; // max contacts limit
   razorpay_plan_id?: string;
@@ -20,23 +20,23 @@ export const PLAN_TIERS: Record<string, PlanTier> = {
   starter: {
     plan_id: 'starter',
     name: 'Starter',
-    price: 999,
+    price: 2999,
     message_quota: 5000,
     contact_limit: 1000,
     razorpay_plan_id: process.env.RAZORPAY_PLAN_STARTER_ID,
   },
   pro: {
     plan_id: 'pro',
-    name: 'Pro',
-    price: 1999,
+    name: 'Growth',
+    price: 2999,
     message_quota: 50000,
     contact_limit: 10000,
     razorpay_plan_id: process.env.RAZORPAY_PLAN_PRO_ID,
   },
   business: {
     plan_id: 'business',
-    name: 'Business Suite',
-    price: 4999,
+    name: 'Managed',
+    price: 2999,
     message_quota: 1000000, // Representing "unlimited" quota as 1,000,000
     contact_limit: 1000000, // Representing "unlimited" contacts as 1,000,000
     razorpay_plan_id: process.env.RAZORPAY_PLAN_BUSINESS_ID,

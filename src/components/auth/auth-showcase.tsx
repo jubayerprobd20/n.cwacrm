@@ -91,7 +91,7 @@ export function AuthShowcase() {
           </svg>
         </div>
         <div className="flex flex-col">
-          <span className="text-lg font-bold tracking-tight text-white leading-none">Wachatra</span>
+          <span className="text-lg font-bold tracking-tight text-white leading-none">N.C WaCRM</span>
           <span className="text-[10px] text-indigo-400/80 mt-1 font-bold tracking-wider uppercase">Business OS</span>
         </div>
       </div>
@@ -105,7 +105,7 @@ export function AuthShowcase() {
               <div className="h-3 w-3 rounded-full bg-red-500/60" />
               <div className="h-3 w-3 rounded-full bg-yellow-500/60" />
               <div className="h-3 w-3 rounded-full bg-emerald-500/60" />
-              <span className="ml-2 text-xs text-slate-500 font-mono">dashboard.wachatra.com</span>
+              <span className="ml-2 text-xs text-slate-500 font-mono">wacrm.nextcorebd.com/dashboard</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-full bg-slate-950/50 px-2.5 py-0.5 border border-white/5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -431,7 +431,7 @@ function MockAIAssistant() {
             {/* User message */}
             <div className="rounded bg-slate-900 border border-white/5 p-1.5 text-[8px] self-start max-w-[90%]">
               <span className="text-slate-500 font-bold block">User</span>
-              <span className="text-slate-300">Is there a reseller plan for Indian agencies?</span>
+              <span className="text-slate-300">Is there a reseller plan for Bangladesh agencies?</span>
             </div>
 
             {/* AI Response Draft suggestion */}
@@ -441,7 +441,7 @@ function MockAIAssistant() {
               </div>
               <span className="text-indigo-400 font-bold text-[8px] block">AI Suggested Draft</span>
               <p className="text-[8px] text-white mt-0.5 leading-normal">
-                Yes! We offer a white-labeled Reseller Plan starting at ₹4,999/month, custom domain mapping and brand controls.
+                Yes! We offer white-label reseller controls with branding and client-workspace management. Domain and payment setup are scoped separately.
               </p>
             </div>
           </div>

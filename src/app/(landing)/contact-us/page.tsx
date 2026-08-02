@@ -59,8 +59,8 @@ export default function ContactUsPage() {
                 <div className="p-5.5 rounded-2xl border border-neutral-900 bg-neutral-950/40 space-y-3">
                   <Mail className="w-5.5 h-5.5 text-emerald-400" />
                   <span className="font-bold text-white block text-sm">Email Inquiry</span>
-                  <a href="mailto:support@wachatra.com" className="text-xs text-muted-foreground hover:text-white transition-colors">
-                    support@wachatra.com
+                  <a href="mailto:support@nextcorebd.com" className="text-xs text-muted-foreground hover:text-white transition-colors">
+                    support@nextcorebd.com
                   </a>
                 </div>
 
@@ -68,7 +68,7 @@ export default function ContactUsPage() {
                   <MapPin className="w-5.5 h-5.5 text-teal-400" />
                   <span className="font-bold text-white block text-sm">HQ Office</span>
                   <span className="text-xs text-muted-foreground block">
-                    Pune, Maharashtra, India
+                    Bangladesh
                   </span>
                 </div>
 
@@ -76,7 +76,7 @@ export default function ContactUsPage() {
                   <Clock className="w-5.5 h-5.5 text-emerald-400" />
                   <span className="font-bold text-white block text-sm">Working Hours</span>
                   <span className="text-xs text-muted-foreground block">
-                    Mon - Sat: 9 AM - 6 PM IST
+                    Mon - Sat: 9 AM - 6 PM BST
                   </span>
                 </div>
 
@@ -113,7 +113,7 @@ export default function ContactUsPage() {
                           required
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="Lakshit Singh"
+                          placeholder="Rahim Ahmed"
                           className="w-full bg-neutral-950 border border-neutral-900 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-primary/50"
                         />
                       </div>
@@ -127,7 +127,7 @@ export default function ContactUsPage() {
                           required
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          placeholder="lakshit@example.com"
+                          placeholder="rahim@example.com"
                           className="w-full bg-neutral-950 border border-neutral-900 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-primary/50"
                         />
                       </div>
@@ -141,7 +141,7 @@ export default function ContactUsPage() {
                           required
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          placeholder="+91 98765 43210"
+                          placeholder="+880 1712 345678"
                           className="w-full bg-neutral-950 border border-neutral-900 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-primary/50"
                         />
                       </div>

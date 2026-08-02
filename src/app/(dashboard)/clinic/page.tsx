@@ -319,7 +319,7 @@ export default function ClinicPage() {
                 <Input id="doc-qual" value={newDocQual} onChange={e => setNewDocQual(e.target.value)} placeholder="MD, MBBS" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="doc-fee">Consultation Fee (₹)</Label>
+                <Label htmlFor="doc-fee">Consultation Fee (৳)</Label>
                 <Input id="doc-fee" type="number" value={newDocFee} onChange={e => setNewDocFee(e.target.value)} />
               </div>
               <Button type="submit" className="w-full">
@@ -351,7 +351,7 @@ export default function ClinicPage() {
                       </div>
                       <p className="text-xs text-muted-foreground">{doc.specialization} ({doc.qualification})</p>
                       <div className="flex items-center gap-1 text-xs text-primary font-medium">
-                        <Star className="h-3.5 w-3.5 fill-primary" /> Consultation Fee: ₹{doc.consultation_fee}
+                        <Star className="h-3.5 w-3.5 fill-primary" /> Consultation Fee: ৳{doc.consultation_fee}
                       </div>
                     </div>
                   </Card>

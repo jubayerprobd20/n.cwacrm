@@ -25,7 +25,7 @@ export type ThemeId = (typeof THEME_IDS)[number];
 
 export const DEFAULT_THEME: ThemeId = "violet";
 
-export const STORAGE_KEY = "wachatra.theme";
+export const STORAGE_KEY = "ncwacrm.theme";
 
 /**
  * MODE — the light/dark dimension, orthogonal to the accent theme.
@@ -45,7 +45,7 @@ export type Mode = (typeof MODES)[number];
 
 export const DEFAULT_MODE: Mode = "dark";
 
-export const MODE_STORAGE_KEY = "wachatra.mode";
+export const MODE_STORAGE_KEY = "ncwacrm.mode";
 
 export function isMode(value: unknown): value is Mode {
   return (

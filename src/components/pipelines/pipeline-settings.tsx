@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import type { Pipeline, PipelineStage } from "@/types";
 import {
   Dialog,
@@ -71,6 +72,7 @@ export function PipelineSettings({
 }: PipelineSettingsProps) {
   const t = useTranslations("Pipelines.settings");
   const supabase = createClient();
+  const { accountId } = useAuth();
 
   const [name, setName] = useState(pipeline.name);
   const [localStages, setLocalStages] = useState<PipelineStage[]>(stages);
@@ -116,6 +118,7 @@ export function PipelineSettings({
       name: s.name,
       color: s.color,
       position: i,
+      organization_id: accountId,
     }));
 
     const [renameRes, stagesRes] = await Promise.all([
@@ -149,6 +152,7 @@ export function PipelineSettings({
         name: trimmed,
         color: newStageColor,
         position: localStages.length,
+        organization_id: accountId,
       })
       .select()
       .single();

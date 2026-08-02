@@ -114,7 +114,7 @@ export default function AiAutomationPage() {
                         <span className="block text-[8px] text-neutral-400 text-right mt-1">9:42 AM</span>
                       </div>
                       <div className="bg-[#d9fdd3] rounded-lg p-2.5 max-w-[85%] self-end shadow-sm text-neutral-800 text-[11px]">
-                        Hi! I'd love to show you Wachatra. Can I ask your monthly message volume first?
+                        Hi! I'd love to show you N.C WaCRM. Can I ask your monthly message volume first?
                         <span className="block text-[8px] text-emerald-600 text-right mt-1">9:42 AM</span>
                       </div>
                     </div>

@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
               </svg>
             </div>
             <div className="flex flex-col text-left">
-              <span className="text-lg font-bold tracking-tight text-white leading-none">Wachatra</span>
+              <span className="text-lg font-bold tracking-tight text-white leading-none">N.C WaCRM</span>
               <span className="text-[10px] text-indigo-400/80 mt-1 font-bold tracking-wider uppercase">Business OS</span>
             </div>
           </div>

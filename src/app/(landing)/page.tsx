@@ -8,9 +8,6 @@ import {
   Zap,
   Eye,
   Globe,
-  Receipt,
-  GraduationCap,
-  IndianRupee,
   Layers,
   Sparkles,
   ChevronDown,
@@ -26,19 +23,18 @@ import { PricingSection } from '@/components/landing/pricing-section';
 import { ChatbotSimulator } from '@/components/landing/chatbot-simulator';
 
 export const metadata: Metadata = {
-  title: 'Wachatra — Premium WhatsApp CRM & Business Automation Platform',
-  description: 'Manage leads, automate customer communication, build visual chatbot flows, and scale your business with Wachatra\'s official Meta WhatsApp API platform.',
+  title: 'N.C WaCRM — Premium WhatsApp CRM & Business Automation Platform',
+  description: 'Manage leads, automate customer communication, build visual chatbot flows, and scale your business with N.C WaCRM\'s official Meta WhatsApp API platform.',
   keywords: [
-    'Wachatra',
-    'Wachatra OS',
+    'N.C WaCRM',
+    'N.C WaCRM OS',
     'WhatsApp CRM',
     'WhatsApp Business API',
     'Shared Inbox',
-    'GST Invoicing',
+    'Bangladesh WhatsApp CRM',
     'No-code Chatbot Builder',
     'Multi-tenant SaaS',
-    'Razorpay Subscription CRM',
-    'India SMB CRM',
+    'Bangladesh Business CRM',
     'Customer Engagement',
     'Automations',
     'Visual Flow Builder',
@@ -121,18 +117,18 @@ export default function LandingPage() {
       bgColor: 'bg-primary/5 border-primary/10 hover:border-primary/30',
     },
     {
-      id: 'gst-billing',
-      icon: Receipt,
-      title: 'GST Billing & Invoices',
-      description: 'Create and send professional GST-compliant invoices directly inside WhatsApp. Send PDF invoices, payment reminders, and receipts.',
+      id: 'templates',
+      icon: MessageSquare,
+      title: 'Message Templates & Broadcasts',
+      description: 'Create approved WhatsApp templates, segment contacts, schedule broadcasts, and track delivery activity from one workspace.',
       color: 'text-emerald-400',
       bgColor: 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30',
     },
     {
-      id: 'school-erp',
-      icon: GraduationCap,
-      title: 'School ERP Modules',
-      description: 'Integrate directly with school management systems. Auto-broadcast fee alerts, exam report cards, and student attendance notifications.',
+      id: 'api-webhooks',
+      icon: Globe,
+      title: 'API & Webhooks',
+      description: 'Connect your existing systems through webhooks and the public REST API without claiming unsupported pre-built integrations.',
       color: 'text-amber-400',
       bgColor: 'bg-amber-500/5 border-amber-500/10 hover:border-amber-500/30',
     },
@@ -149,15 +145,15 @@ export default function LandingPage() {
   const faqs = [
     {
       question: 'Is this an official WhatsApp business solution?',
-      answer: 'Yes, Wachatra utilizes the official Meta WhatsApp Cloud API. We do not use browser automation or unofficial web-client hacks, ensuring your business number is completely safe from suspension.',
+      answer: 'Yes, N.C WaCRM utilizes the official Meta WhatsApp Cloud API. We do not use browser automation or unofficial web-client hacks, ensuring your business number is completely safe from suspension.',
     },
     {
       question: 'How does the White-Label feature work?',
-      answer: 'Under the Business Suite plan, agencies get access to a custom admin dashboard. You can map your own domain (e.g., crm.youragency.com), customize the CSS themes, add your logo, and sell subscription packages directly to your clients.',
+      answer: 'Reseller accounts can manage branding settings, client workspaces, and credit controls. Domain, email, and payment-provider setup require a separate implementation scope.',
     },
     {
       question: 'Can we integrate it with our local billing or ERP systems?',
-      answer: 'Absolutely. We support incoming and outgoing webhooks, as well as a full REST API. The Business Suite comes pre-integrated with InvoBill for GST invoicing and standard school ERP systems.',
+      answer: 'Yes. N.C WaCRM supports incoming and outgoing webhooks plus a public REST API, so a developer can connect your billing, ERP, or other business system.',
     },
     {
       question: 'Is there a limit to how many messages we can send?',
@@ -165,7 +161,7 @@ export default function LandingPage() {
     },
     {
       question: 'Do we need a dedicated server to host this?',
-      answer: 'Wachatra is optimized for Hostinger Managed Node.js, Vercel, or custom VPS. The setup is highly automated, and you can get up and running with a single-click deploy.',
+      answer: 'N.C WaCRM is optimized for Hostinger Managed Node.js, Vercel, or custom VPS. The setup is highly automated, and you can get up and running with a single-click deploy.',
     },
   ];
 
@@ -192,12 +188,12 @@ export default function LandingPage() {
           <h1 className="text-4xl sm:text-6xl lg:text-7.5xl font-black tracking-tight text-white leading-tight mb-8">
             Complete WhatsApp CRM & <br/>
             <span className="bg-gradient-to-r from-primary via-violet-400 to-cyan-400 bg-clip-text text-transparent">
-              Business Suite for India
+              Business Suite for Bangladesh
             </span>
           </h1>
 
           <p className="text-base sm:text-xl text-[#9ea3b0] max-w-3xl mx-auto leading-relaxed mb-12">
-            Shared team inbox, no-code visual chatbot flows, and broadcast campaigns. Pre-integrated with GST Invoicing (InvoBill) and school/hospital ERP systems. Rebrand and sell as your own SaaS.
+            A shared team inbox, no-code visual chatbot flows, broadcast campaigns, and API access for Bangladesh businesses. Rebrand the workspace with your own agency identity.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4.5">
@@ -223,7 +219,7 @@ export default function LandingPage() {
             <span className="hidden sm:inline text-neutral-800">•</span>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              Razorpay Subscriptions
+              SSLCommerz / bKash
             </div>
             <span className="hidden sm:inline text-neutral-800">•</span>
             <div className="flex items-center gap-1.5">
@@ -266,7 +262,7 @@ export default function LandingPage() {
                       <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
                     </div>
                     <div className="text-[10px] text-muted-foreground font-mono bg-neutral-950 px-4 py-1 rounded border border-neutral-900">
-                      app.wachatra.com/dashboard
+                      wacrm.nextcorebd.com/dashboard
                     </div>
                     <div className="w-12" />
                   </div>
@@ -282,7 +278,7 @@ export default function LandingPage() {
                         <div className="w-16 h-1.5 bg-neutral-800 rounded" />
                       </div>
                       <div className="w-full h-8 rounded hover:bg-neutral-900/50 flex items-center px-3 gap-2">
-                        <Receipt className="w-3.5 h-3.5 text-neutral-600" />
+                        <Globe className="w-3.5 h-3.5 text-neutral-600" />
                         <div className="w-14 h-1.5 bg-neutral-800 rounded" />
                       </div>
                       <div className="w-full h-8 rounded hover:bg-neutral-900/50 flex items-center px-3 gap-2">
@@ -299,8 +295,8 @@ export default function LandingPage() {
                           <span className="text-lg sm:text-xl font-bold text-white mt-1.5">1,248</span>
                         </div>
                         <div className="bg-[#0e1117] rounded-xl p-4 border border-neutral-900 flex flex-col justify-between">
-                          <span className="text-[10px] text-muted-foreground">GST Invoiced</span>
-                          <span className="text-lg sm:text-xl font-bold text-white mt-1.5">₹48,250</span>
+                          <span className="text-[10px] text-muted-foreground">Campaign reach</span>
+                          <span className="text-lg sm:text-xl font-bold text-white mt-1.5">48,250</span>
                         </div>
                         <div className="bg-[#0e1117] rounded-xl p-4 border border-neutral-900 flex flex-col justify-between">
                           <span className="text-[10px] text-muted-foreground">AI Rate</span>
@@ -495,7 +491,7 @@ export default function LandingPage() {
                     <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
                     <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
                   </div>
-                  <span className="text-[10px] text-slate-500 font-bold font-mono ml-3">Inbox • wachatra</span>
+                  <span className="text-[10px] text-slate-500 font-bold font-mono ml-3">Inbox • ncwacrm</span>
                 </div>
                 
                 {/* Inbox Body Grid (Sidebar + Chat Area) */}
@@ -742,7 +738,7 @@ export default function LandingPage() {
                       <div className="w-2 h-2 rounded-full bg-yellow-500/80" />
                       <div className="w-2 h-2 rounded-full bg-green-500/80" />
                     </div>
-                    <span className="font-bold text-white text-[10px] ml-1 font-sans">Pipelines • wachatra</span>
+                    <span className="font-bold text-white text-[10px] ml-1 font-sans">Pipelines • ncwacrm</span>
                   </div>
                   <span className="text-[9px] rounded bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 text-violet-400 font-semibold font-sans">Active Sales</span>
                 </div>
@@ -831,7 +827,7 @@ export default function LandingPage() {
                       <div className="w-2 h-2 rounded-full bg-yellow-500/80" />
                       <div className="w-2 h-2 rounded-full bg-green-500/80" />
                     </div>
-                    <span className="font-bold text-white text-[10px] ml-1 font-sans">Analytics • wachatra</span>
+                    <span className="font-bold text-white text-[10px] ml-1 font-sans">Analytics • ncwacrm</span>
                   </div>
                   <span className="text-[8px] bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded text-emerald-400 font-bold font-sans">Live</span>
                 </div>
@@ -1003,7 +999,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Indian Market Integration Section */}
+      {/* Bangladesh business operations section */}
       <section id="integrations" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-gradient-to-br from-neutral-950 to-neutral-900/50 rounded-3xl p-8 sm:p-16 border border-neutral-900 relative overflow-hidden">
@@ -1012,30 +1008,30 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
                 <Badge variant="outline" className="mb-4 bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
-                  <IndianRupee className="w-3.5 h-3.5 mr-1" />
-                  Made For Indian Businesses
+                  <Globe className="w-3.5 h-3.5 mr-1" />
+                  Built for Bangladesh businesses
                 </Badge>
                 <h2 className="text-3xl sm:text-4.5xl font-black tracking-tight text-white mb-6">
-                  GST Invoicing & <br/>
-                  School ERP Integration
+                  Bangladesh-ready <br/>
+                  CRM operations
                 </h2>
                 <p className="text-muted-foreground text-base sm:text-lg mb-8 leading-relaxed">
-                  Most CRM templates only handle chat. **Wachatra** bridges the gap by integrating GST invoicing (via InvoBill) and local School/Hospital ERPs. Broadcast auto-reminders, invoice PDFs, and student attendance alerts automatically.
+                  Manage conversations, contacts, campaigns, and automation in one workspace. Use the public API and webhooks to connect the Bangladesh-specific systems your business already uses.
                 </p>
 
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-primary mt-1 shrink-0" />
                     <div>
-                      <span className="font-semibold text-white block">Automated Payment Reminders</span>
-                      <span className="text-sm text-muted-foreground">Send payment requests with Razorpay/UPI links and auto-reconciliation.</span>
+                      <span className="font-semibold text-white block">Automated customer follow-ups</span>
+                      <span className="text-sm text-muted-foreground">Create WhatsApp campaigns and scheduled reminders from saved templates.</span>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-primary mt-1 shrink-0" />
                     <div>
-                      <span className="font-semibold text-white block">School ERP Attendance & Marks</span>
-                      <span className="text-sm text-muted-foreground">Alert parents regarding attendance status, homework, and reports automatically.</span>
+                      <span className="font-semibold text-white block">Connect through API & webhooks</span>
+                      <span className="text-sm text-muted-foreground">Integrate approved local billing, ERP, or payment services through a scoped implementation.</span>
                     </div>
                   </div>
                 </div>
@@ -1043,29 +1039,29 @@ export default function LandingPage() {
 
               <div className="bg-[#080a0e] rounded-2xl p-6 sm:p-8 border border-neutral-900/80 shadow-xl relative">
                 <h3 className="font-bold text-white text-lg mb-6 flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-emerald-400" />
-                  Active InvoBill Invoice Output
+                  <MessageSquare className="w-5 h-5 text-emerald-400" />
+                  Campaign activity snapshot
                 </h3>
                 <div className="space-y-4">
                   <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-900 flex justify-between items-center">
                     <div>
-                      <span className="text-xs text-muted-foreground block">CLIENT</span>
-                      <span className="text-sm font-semibold text-white">Shree Balaji Enterprises</span>
+                      <span className="text-xs text-muted-foreground block">CAMPAIGN</span>
+                      <span className="text-sm font-semibold text-white">Customer follow-up</span>
                     </div>
-                    <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">PAID</Badge>
+                    <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">SENT</Badge>
                   </div>
                   <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-900 flex justify-between items-center">
                     <div>
-                      <span className="text-xs text-muted-foreground block">GST DETAILS (GSTIN)</span>
-                      <span className="text-sm font-mono text-white">07AAAAA1111A1Z1</span>
+                      <span className="text-xs text-muted-foreground block">AUDIENCE</span>
+                      <span className="text-sm font-mono text-white">Tagged contacts</span>
                     </div>
                   </div>
                   <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-900 flex justify-between items-center">
                     <div>
-                      <span className="text-xs text-muted-foreground block">TOTAL INVOICED AMOUNT</span>
-                      <span className="text-base font-bold text-white">₹14,850.00</span>
+                      <span className="text-xs text-muted-foreground block">DELIVERY STATUS</span>
+                      <span className="text-base font-bold text-white">Tracked in dashboard</span>
                     </div>
-                    <span className="text-xs text-[#9ea3b0]">CGST 9% + SGST 9%</span>
+                    <span className="text-xs text-[#9ea3b0]">Meta template rules apply</span>
                   </div>
                   <Button className="w-full bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 text-white gap-2">
                     <MessageSquare className="w-4 h-4" />
@@ -1135,9 +1131,9 @@ export default function LandingPage() {
                   <span className="text-xs text-muted-foreground">Map client workspaces to your brand domain seamlessly.</span>
                 </div>
                 <div className="p-5 rounded-xl bg-neutral-950 border border-neutral-900">
-                  <IndianRupee className="w-5 h-5 text-cyan-400 mb-2.5" />
-                  <span className="font-semibold text-white block mb-1">Custom Pricing</span>
-                  <span className="text-xs text-muted-foreground">Define and collect payments under your own subscription plans.</span>
+                  <Globe className="w-5 h-5 text-cyan-400 mb-2.5" />
+                  <span className="font-semibold text-white block mb-1">Brand Controls</span>
+                  <span className="text-xs text-muted-foreground">Manage your agency identity and client workspace settings.</span>
                 </div>
               </div>
             </div>
@@ -1177,11 +1173,11 @@ export default function LandingPage() {
                   <Star className="w-4 h-4 fill-current" />
                 </div>
                 <p className="text-[#cbd5e1] text-xs leading-relaxed mb-6 font-medium italic">
-                  &quot;Switching to <strong>Wachatra</strong> automated our patient booking flow. Clients schedule check-ups directly on WhatsApp, and the AI resolves clinic FAQs instantly. Handovers to our front desk are perfectly seamless.&quot;
+                  &quot;Switching to <strong>N.C WaCRM</strong> automated our patient booking flow. Clients schedule check-ups directly on WhatsApp, and the AI resolves clinic FAQs instantly. Handovers to our front desk are perfectly seamless.&quot;
                 </p>
               </div>
               <div className="border-t border-neutral-900/60 pt-4">
-                <span className="font-bold text-white text-xs block">Dr. Ananya Sharma</span>
+                <span className="font-bold text-white text-xs block">Dr. Tasnim Alam</span>
                 <span className="text-[10px] text-muted-foreground mt-0.5 block">Clinic Operations Director • Aura Health Clinics</span>
               </div>
             </div>
@@ -1198,11 +1194,11 @@ export default function LandingPage() {
                   <Star className="w-4 h-4 fill-current" />
                 </div>
                 <p className="text-[#cbd5e1] text-xs leading-relaxed mb-6 font-medium italic">
-                  &quot;Our customer engagement rates skyrocketed with <strong>Wachatra</strong>&apos;s automated order status and shipping alerts. Using the official WhatsApp Business API ensures we maintain a solid reputation and perfect compliance.&quot;
+                  &quot;Our customer engagement rates skyrocketed with <strong>N.C WaCRM</strong>&apos;s automated order status and shipping alerts. Using the official WhatsApp Business API ensures we maintain a solid reputation and perfect compliance.&quot;
                 </p>
               </div>
               <div className="border-t border-neutral-900/60 pt-4">
-                <span className="font-bold text-white text-xs block">Rohan Mehta</span>
+                <span className="font-bold text-white text-xs block">Tanvir Rahman</span>
                 <span className="text-[10px] text-muted-foreground mt-0.5 block">Founder & CEO • CraftedThreads E-Commerce</span>
               </div>
             </div>
@@ -1219,11 +1215,11 @@ export default function LandingPage() {
                   <Star className="w-4 h-4 fill-current" />
                 </div>
                 <p className="text-[#cbd5e1] text-xs leading-relaxed mb-6 font-medium italic">
-                  &quot;<strong>Wachatra</strong>&apos;s visual pipeline editor is custom-built for chat threads. We easily classify inbound leads, auto-assign tickets to support agents, and monitor drop-offs with absolute visual clarity.&quot;
+                  &quot;<strong>N.C WaCRM</strong>&apos;s visual pipeline editor is custom-built for chat threads. We easily classify inbound leads, auto-assign tickets to support agents, and monitor drop-offs with absolute visual clarity.&quot;
                 </p>
               </div>
               <div className="border-t border-neutral-900/60 pt-4">
-                <span className="font-bold text-white text-xs block">Sneha Nair</span>
+                <span className="font-bold text-white text-xs block">Farhana Yasmin</span>
                 <span className="text-[10px] text-muted-foreground mt-0.5 block">Lead Product Owner • VentureScale SaaS</span>
               </div>
             </div>

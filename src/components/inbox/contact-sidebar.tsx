@@ -117,6 +117,7 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
           contact_id: contact.id,
           custom_field_id: fieldId,
           value: val.trim(),
+          organization_id: accountId,
         }));
 
       if (rows.length > 0) {
@@ -167,6 +168,7 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
       .insert({
         contact_id: contact.id,
         account_id: accountId,
+        organization_id: accountId,
         user_id: user?.id,
         note_text: newNote.trim(),
       })

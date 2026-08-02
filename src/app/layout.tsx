@@ -22,19 +22,18 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Wachatra - Premium WhatsApp CRM & Business Automation Platform",
-    template: "%s — Wachatra",
+    default: "N.C WaCRM - Premium WhatsApp CRM & Business Automation Platform",
+    template: "%s — N.C WaCRM",
   },
-  description: "Manage leads, automate customer communication, build visual chatbot flows, and scale your business with Wachatra's official Meta WhatsApp API platform.",
+  description: "Manage leads, automate customer communication, build visual chatbot flows, and scale your business with N.C WaCRM's official Meta WhatsApp API platform.",
   keywords: [
-    "Wachatra",
+    "N.C WaCRM",
     "WhatsApp CRM",
     "WhatsApp Business API",
     "Shared Inbox",
     "No-code Chatbot Builder",
     "Multi-tenant SaaS",
-    "Razorpay Subscription CRM",
-    "India SMB CRM",
+    "Bangladesh Business CRM",
     "Customer Engagement",
     "Automations",
     "Visual Flow Builder",
@@ -46,24 +45,24 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://wachatra.com",
-    siteName: "Wachatra",
-    title: "Wachatra - Premium WhatsApp CRM & Business Automation Platform",
-    description: "Manage leads, automate customer communication, build visual chatbot flows, and scale your business with Wachatra's official Meta WhatsApp API platform.",
+    url: "https://wacrm.nextcorebd.com",
+    siteName: "N.C WaCRM",
+    title: "N.C WaCRM - Premium WhatsApp CRM & Business Automation Platform",
+    description: "Manage leads, automate customer communication, build visual chatbot flows, and scale your business with N.C WaCRM's official Meta WhatsApp API platform.",
     images: [
       {
-        url: "https://wachatra.com/og-image.png",
+        url: "https://wacrm.nextcorebd.com/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Wachatra - Premium WhatsApp CRM & Business Automation Platform",
+        alt: "N.C WaCRM - Premium WhatsApp CRM & Business Automation Platform",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Wachatra - Premium WhatsApp CRM & Business Automation Platform",
-    description: "Manage leads, automate customer communication, build visual chatbot flows, and scale your business with Wachatra's official Meta WhatsApp API platform.",
-    images: ["https://wachatra.com/og-image.png"],
+    title: "N.C WaCRM - Premium WhatsApp CRM & Business Automation Platform",
+    description: "Manage leads, automate customer communication, build visual chatbot flows, and scale your business with N.C WaCRM's official Meta WhatsApp API platform.",
+    images: ["https://wacrm.nextcorebd.com/og-image.png"],
     creator: "@maajankiweb",
   },
   robots: {
@@ -92,7 +91,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   alternates: {
-    canonical: "https://wachatra.com",
+    canonical: "https://wacrm.nextcorebd.com",
   },
 };
 
@@ -172,32 +171,40 @@ export default async function RootLayout({
 
 
         {/* Structured Data for SEO */}
-        <Script id="structured-data" type="application/ld+json" strategy="beforeInteractive">
-          {`
+        <script
+          id="structured-data"
+          type="application/ld+json"
+          // Some browser extensions rewrite JSON-LD scripts before React
+          // hydrates. This script is static, so only ignore a mismatch on
+          // this node rather than suppressing hydration warnings globally.
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `
             {
               "@context": "https://schema.org",
               "@type": "SoftwareApplication",
-              "name": "Wachatra",
+              "name": "N.C WaCRM",
               "description": "Self-hostable CRM template for WhatsApp — shared inbox, contacts, sales pipelines, broadcasts, and no-code automations.",
               "applicationCategory": "BusinessApplication",
               "operatingSystem": "All",
               "offers": {
                 "@type": "Offer",
                 "price": "0",
-                "priceCurrency": "USD"
+                "priceCurrency": "BDT"
               },
               "author": {
-                "@type": "Person",
-                "name": "Ashish Kumar"
+                "@type": "Organization",
+                "name": "NextCore BD"
               },
               "license": "https://opensource.org/licenses/MIT",
-              "url": "https://wachatra.com",
+              "url": "https://wacrm.nextcorebd.com",
               "sameAs": [
                 "https://github.com/maajankiweb/WhatsApp-CRM"
               ]
             }
-          `}
-        </Script>
+          `,
+          }}
+        />
       </head>
       <body className="min-h-full bg-background text-foreground font-sans" suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>

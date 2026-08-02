@@ -1,11 +1,11 @@
 // ============================================================
 // Webhook payload signing — pure, server-side.
 //
-// Every delivery carries an `X-Wachatra-Signature` header so receivers
-// can verify the request really came from Wachatra and wasn't tampered
+// Every delivery carries an `X-NCWaCRM-Signature` header so receivers
+// can verify the request really came from N.C WaCRM and wasn't tampered
 // with or replayed. The scheme is Stripe-style:
 //
-//   X-Wachatra-Signature: t=<unix_seconds>,v1=<hex HMAC-SHA256>
+//   X-NCWaCRM-Signature: t=<unix_seconds>,v1=<hex HMAC-SHA256>
 //
 // where the signed message is `${t}.${rawBody}` and the key is the
 // endpoint's secret. Receivers recompute the HMAC over the raw body
@@ -16,7 +16,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 /**
- * Build the `X-Wachatra-Signature` header value for `rawBody`, signed
+ * Build the `X-NCWaCRM-Signature` header value for `rawBody`, signed
  * with `secret` at time `timestampSeconds` (pass it in — never call
  * Date.now() here, so the value is testable and callers control the
  * clock).
@@ -33,7 +33,7 @@ export function buildSignatureHeader(
 }
 
 /**
- * Verify a signature header. Exposed so a Wachatra-to-Wachatra integration
+ * Verify a signature header. Exposed so a N.C WaCRM-to-N.C WaCRM integration
  * (or a test) can validate deliveries; receivers in other stacks
  * reimplement the same three lines. `toleranceSeconds` bounds replay.
  */

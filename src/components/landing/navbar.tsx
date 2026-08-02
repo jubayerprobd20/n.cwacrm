@@ -32,7 +32,7 @@ export function Navbar() {
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight text-white leading-none">Wachatra</span>
+              <span className="text-lg font-bold tracking-tight text-white leading-none">N.C WaCRM</span>
               <span className="text-[10px] text-muted-foreground mt-1 font-semibold tracking-wider uppercase">Business OS</span>
             </div>
           </Link>

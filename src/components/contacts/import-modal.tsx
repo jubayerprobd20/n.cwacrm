@@ -274,6 +274,7 @@ export function ImportModal({
         const rows = chunk.map((row) => ({
           user_id: user.id,
           account_id: accountId,
+          organization_id: accountId,
           phone: row.phone,
           name: row.name || null,
           email: row.email || null,

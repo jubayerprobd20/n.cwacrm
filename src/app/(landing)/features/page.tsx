@@ -53,15 +53,15 @@ export default function FeaturesPage() {
     },
     {
       icon: Link2,
-      title: "Unlimited Integrations",
-      description: "27+ native integrations out of the box — Shopify, Razorpay, Google Sheets, IndiaMart, JustDial, Calendly, and more. Plus open API and Webhook access to connect any custom system.",
+      title: "Extensible Integrations",
+      description: "Use webhooks and the public REST API to connect your existing systems. Bangladesh-specific payment, ERP, and commerce connections are scoped and configured for your business.",
       color: "text-teal-400 font-bold",
       accent: "from-teal-400/20 to-indigo-500/20"
     },
     {
       icon: Smartphone,
-      title: "Click-to-WhatsApp Ads",
-      description: "Turn your Facebook and Instagram ads into WhatsApp conversations. Leads click your ad, land in WhatsApp, and get your automated reply instantly — while they're still warm.",
+      title: "Campaign Automation",
+      description: "Segment contacts, schedule approved WhatsApp templates, and trigger follow-up flows from customer activity.",
       color: "text-emerald-400 font-bold",
       accent: "from-emerald-500/20 to-green-400/20"
     },
@@ -152,7 +152,7 @@ export default function FeaturesPage() {
                 How it works
               </h2>
               <p className="text-base sm:text-lg text-muted-foreground">
-                Getting started with Wachatra takes minutes, not months.
+                Getting started with N.C WaCRM takes minutes, not months.
               </p>
             </div>
             
@@ -230,7 +230,7 @@ export default function FeaturesPage() {
                 </span>
                 
                 <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-                  Wachatra connects to the official WhatsApp Business API through Meta Business. Every message you send — automated chatbot replies, customer updates, and notifications — is delivered with enterprise-grade reliability and full Meta compliance. No workarounds. No grey-area tools.
+                  N.C WaCRM connects to the official WhatsApp Business API through Meta Business. Every message you send — automated chatbot replies, customer updates, and notifications — is delivered with enterprise-grade reliability and full Meta compliance. No workarounds. No grey-area tools.
                 </p>
                 
                 <div className="pt-2">

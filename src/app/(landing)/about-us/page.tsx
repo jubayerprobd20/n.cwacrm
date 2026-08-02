@@ -22,10 +22,10 @@ export default function AboutUsPage() {
             Our Vision
           </div>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none text-white">
-            About Wachatra OS
+            About N.C WaCRM OS
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-            Wachatra is a premium AI-powered WhatsApp CRM and customer support automation platform built to help Indian SMBs and global agencies build trusted, responsive customer relationships on the world's most popular messenger.
+            N.C WaCRM is an AI-powered WhatsApp CRM and customer-support automation platform built for Bangladesh businesses and agencies that need trusted, responsive customer communication.
           </p>
         </section>
 
@@ -47,7 +47,7 @@ export default function AboutUsPage() {
             </div>
             <h3 className="text-base font-bold text-white">Compliance First</h3>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Wachatra runs strictly on Meta's official WhatsApp Business platform APIs. No unofficial chrome extensions, no fragile scraping hacks. Your WABA numbers stay safe and 100% compliant.
+              N.C WaCRM uses Meta's official WhatsApp Business platform APIs. It does not rely on browser automation or scraping; your team remains responsible for meeting Meta's policies and approval requirements.
             </p>
           </div>
 
@@ -57,7 +57,7 @@ export default function AboutUsPage() {
             </div>
             <h3 className="text-base font-bold text-white">Agency White-Label</h3>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Designed with a modular multi-tenant architecture, Wachatra lets digital agencies launch their own branded WhatsApp CRM business under custom domains with Razorpay subscription systems.
+              Designed with a modular multi-tenant architecture, N.C WaCRM gives digital agencies branding and client-workspace controls. Domain and payment-provider integrations are delivered through a separate implementation scope.
             </p>
           </div>
         </section>
@@ -67,7 +67,7 @@ export default function AboutUsPage() {
           <div className="rounded-2xl border border-neutral-900 bg-neutral-950/20 p-8 sm:p-12 space-y-6">
             <h2 className="text-2xl font-bold text-white">The WhatsApp Business OS</h2>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Customer support shouldn't exist in a silo. We built Wachatra to combine team collaboration, automated FAQ answering chatbots, contact segmenting, and external business operations (such as payment processing and school alerts) in a unified workspace.
+              Customer support shouldn't exist in a silo. We built N.C WaCRM to combine team collaboration, automated FAQ answering chatbots, contact segmenting, and external business operations (such as payment processing and school alerts) in a unified workspace.
             </p>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
               We continue to expand our features list, adding new native API integrations and visual builder modules, with standard updates shipped directly to our customer workspaces every week.

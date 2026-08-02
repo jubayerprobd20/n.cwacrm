@@ -35,11 +35,11 @@ describe('generateApiKey', () => {
 
 describe('hashApiKey', () => {
   it('is deterministic', () => {
-    expect(hashApiKey('wachatra_live_abc')).toBe(hashApiKey('wachatra_live_abc'));
+    expect(hashApiKey('ncwacrm_live_abc')).toBe(hashApiKey('ncwacrm_live_abc'));
   });
 
   it('differs for different inputs', () => {
-    expect(hashApiKey('wachatra_live_abc')).not.toBe(hashApiKey('wachatra_live_abd'));
+    expect(hashApiKey('ncwacrm_live_abc')).not.toBe(hashApiKey('ncwacrm_live_abd'));
   });
 });
 
@@ -57,7 +57,7 @@ describe('looksLikeApiKey', () => {
 
 describe('timingSafeHexEqual', () => {
   it('is true for identical digests', () => {
-    const h = hashApiKey('wachatra_live_xyz');
+    const h = hashApiKey('ncwacrm_live_xyz');
     expect(timingSafeHexEqual(h, h)).toBe(true);
   });
 

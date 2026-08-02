@@ -28,7 +28,7 @@ export default function RefundPolicyPage() {
           {/* Policy content */}
           <div className="space-y-8 text-xs sm:text-sm text-muted-foreground leading-relaxed">
             <p>
-              At Wachatra, we deliver professional WhatsApp CRM and communication automation services. This policy clarifies terms regarding recurring subscriptions, setup configurations, custom developments, consulting sessions, and billing queries.
+              At N.C WaCRM, we deliver professional WhatsApp CRM and communication automation services. This policy clarifies terms regarding recurring subscriptions, setup configurations, custom developments, consulting sessions, and billing queries.
             </p>
 
             <section className="space-y-3">
@@ -87,8 +87,8 @@ export default function RefundPolicyPage() {
                 For any queries regarding billing, invoice breakdowns, or cancellations, please contact our support desk:
               </p>
               <div className="text-xs text-muted-foreground mt-3">
-                <p className="font-bold text-white">Wachatra Technologies</p>
-                <p>Email: <a href="mailto:support@wachatra.com" className="text-primary hover:underline">support@wachatra.com</a></p>
+                <p className="font-bold text-white">NextCore BD Technologies</p>
+                <p>Email: <a href="mailto:support@nextcorebd.com" className="text-primary hover:underline">support@nextcorebd.com</a></p>
               </div>
             </section>
           </div>

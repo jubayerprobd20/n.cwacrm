@@ -80,12 +80,13 @@ BEGIN
     RAISE EXCEPTION 'No account for caller' USING ERRCODE = '22023';
   END IF;
 
-  INSERT INTO member_presence (user_id, account_id, status, last_seen_at)
-  VALUES (auth.uid(), v_account_id, p_status, now())
+  INSERT INTO member_presence (user_id, account_id, status, last_seen_at, organization_id)
+  VALUES (auth.uid(), v_account_id, p_status, now(), v_account_id)
   ON CONFLICT (user_id) DO UPDATE
-    SET status       = excluded.status,
-        last_seen_at = now(),
-        account_id   = excluded.account_id;
+    SET status          = excluded.status,
+        last_seen_at    = now(),
+        account_id      = excluded.account_id,
+        organization_id = excluded.organization_id;
 END;
 $$;
 

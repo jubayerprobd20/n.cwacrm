@@ -28,7 +28,7 @@ export default function PrivacyPolicyPage() {
           {/* Policy content */}
           <div className="space-y-8 text-xs sm:text-sm text-muted-foreground leading-relaxed">
             <p>
-              Welcome to Wachatra. We are committed to protecting your business operations, client details, and transaction histories. This Privacy Policy details how we collect, store, isolate, and handle data when utilizing our multi-tenant SaaS WhatsApp CRM.
+              Welcome to N.C WaCRM. We are committed to protecting your business operations, client details, and transaction histories. This Privacy Policy details how we collect, store, isolate, and handle data when utilizing our multi-tenant SaaS WhatsApp CRM.
             </p>
 
             <section className="space-y-3">
@@ -40,7 +40,7 @@ export default function PrivacyPolicyPage() {
                 <li><strong>Account Parameters:</strong> Sign-up credentials, organization roles, team member profiles, custom domains, and support branding preferences.</li>
                 <li><strong>WhatsApp Metadata:</strong> Connected WABA phone numbers, WhatsApp Business Account parameters, co-existence setup configs, and webhook URLs.</li>
                 <li><strong>Message Streams:</strong> Opted-in client contact lists, sent/received messages, chatbot prompts, campaign templates, and response rates.</li>
-                <li><strong>Billing Details:</strong> Razorpay integration parameters, subscription plans, and transaction receipts.</li>
+                <li><strong>Billing Details:</strong> SSLCommerz / bKash integration parameters, subscription plans, and transaction receipts.</li>
               </ul>
             </section>
 
@@ -63,7 +63,7 @@ export default function PrivacyPolicyPage() {
               </p>
               <ul className="list-disc pl-5 space-y-1">
                 <li><strong>Meta Developers:</strong> All automated outgoing messages are securely routed to Meta's Cloud API nodes.</li>
-                <li><strong>Integration Endpoints:</strong> Data is shared with external services (like Google Sheets, Razorpay, or local school ERP nodes) only when explicitly configured and authenticated by your workspace administrator.</li>
+                <li><strong>Integration Endpoints:</strong> Data is shared with external services (like Google Sheets, SSLCommerz / bKash, or local school ERP nodes) only when explicitly configured and authenticated by your workspace administrator.</li>
               </ul>
             </section>
 
@@ -80,8 +80,8 @@ export default function PrivacyPolicyPage() {
                 For questions regarding data processing, security compliance, or to request a tenant data export, please reach out to our desk:
               </p>
               <div className="text-xs text-muted-foreground mt-3">
-                <p className="font-bold text-white">Wachatra Technologies</p>
-                <p>Email: <a href="mailto:support@wachatra.com" className="text-primary hover:underline">support@wachatra.com</a></p>
+                <p className="font-bold text-white">NextCore BD Technologies</p>
+                <p>Email: <a href="mailto:support@nextcorebd.com" className="text-primary hover:underline">support@nextcorebd.com</a></p>
               </div>
             </section>
           </div>

@@ -68,7 +68,7 @@ describe("requireApiKey", () => {
     expect(findActiveKeyByHash).not.toHaveBeenCalled();
   });
 
-  it("401s on a token that doesn't look like a Wachatra key", async () => {
+  it("401s on a token that doesn't look like a N.C WaCRM key", async () => {
     await expectApiError(
       requireApiKey(reqWith("Bearer some-invite-token")),
       "unauthorized",

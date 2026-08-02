@@ -64,6 +64,7 @@ const SECURITY_HEADERS = [
 ] as const;
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   compress: true,
   experimental: {
     optimizePackageImports: [

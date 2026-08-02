@@ -119,7 +119,7 @@ function BrandingSection({ settings, organizationId, onSave }: {
       <section className="space-y-4">
         <div>
           <h3 className="text-sm font-semibold text-foreground">White-Label Branding</h3>
-          <p className="text-xs text-muted-foreground">Your clients will see these details instead of Wachatra branding.</p>
+          <p className="text-xs text-muted-foreground">Your clients will see these details instead of N.C WaCRM branding.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -156,7 +156,7 @@ function BrandingSection({ settings, organizationId, onSave }: {
             <Input id="custom_domain" placeholder="crm.yourdomain.com"
               value={form.custom_domain}
               onChange={e => setForm(f => ({ ...f, custom_domain: e.target.value }))} />
-            <p className="text-[11px] text-muted-foreground">Point a CNAME to <code className="font-mono">app.wachatra.com</code></p>
+            <p className="text-[11px] text-muted-foreground">Point a CNAME to <code className="font-mono">wacrm.nextcorebd.com</code></p>
           </div>
         </div>
       </section>
@@ -175,7 +175,7 @@ function BrandingSection({ settings, organizationId, onSave }: {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="support_phone"><span className="flex items-center gap-2"><Phone className="size-3.5" /> Support phone</span></Label>
-            <Input id="support_phone" placeholder="+91 98765 43210"
+            <Input id="support_phone" placeholder="+880 1712-345678"
               value={form.support_phone}
               onChange={e => setForm(f => ({ ...f, support_phone: e.target.value }))} />
           </div>
@@ -319,7 +319,7 @@ function ClientsSection({ organizationId }: { organizationId: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Link client manually</DialogTitle>
-            <DialogDescription>Enter the Org ID of an existing Wachatra workspace.</DialogDescription>
+            <DialogDescription>Enter the Org ID of an existing N.C WaCRM workspace.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Label htmlFor="client_org_id">Organization ID</Label>
@@ -403,7 +403,7 @@ function ClientsSection({ organizationId }: { organizationId: string }) {
                       <Badge variant="secondary" className="capitalize">{org?.plan ?? '—'}</Badge>
                     </td>
                     <td className="px-4 py-3 font-mono font-medium">
-                      ₹{client.credit_balance.toFixed(2)}
+                      ৳{client.credit_balance.toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
                       <span className={[
@@ -467,7 +467,7 @@ function CreditsSection({ settings, organizationId }: { settings: ResellerSettin
         <div className="absolute -right-8 -top-8 size-32 rounded-full bg-primary/10 blur-2xl" />
         <p className="text-sm font-medium text-muted-foreground">Wallet balance</p>
         <p className="mt-1 text-4xl font-bold text-foreground">
-          ₹{settings.wallet_balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          ৳{settings.wallet_balance.toLocaleString('en-BD', { minimumFractionDigits: 2 })}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">Available to distribute to your clients</p>
         <Button className="mt-4" size="sm" onClick={() => setTopupOpen(true)} id="topup-wallet-btn">
@@ -478,7 +478,7 @@ function CreditsSection({ settings, organizationId }: { settings: ResellerSettin
       <div className="rounded-xl border border-border bg-card/60 p-5 space-y-3">
         <h4 className="text-sm font-semibold text-foreground">How Reseller Credits Work</h4>
         <ol className="space-y-2 text-sm text-muted-foreground">
-          <li className="flex gap-3"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">1</span>Top up your reseller wallet via Razorpay.</li>
+          <li className="flex gap-3"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">1</span>Top up your reseller wallet.</li>
           <li className="flex gap-3"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">2</span>Allocate credits to each sub-client from your balance.</li>
           <li className="flex gap-3"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">3</span>Your margin ({settings.credit_margin_pct}%) is automatically deducted from platform cost.</li>
           <li className="flex gap-3"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">4</span>Monitor usage in real-time from the Clients tab.</li>
@@ -489,10 +489,10 @@ function CreditsSection({ settings, organizationId }: { settings: ResellerSettin
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Top up reseller wallet</DialogTitle>
-            <DialogDescription>Enter the amount (INR) you want to add to your wallet.</DialogDescription>
+            <DialogDescription>Enter the amount (BDT) you want to add to your wallet.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            <Label htmlFor="topup_amount">Amount (₹)</Label>
+            <Label htmlFor="topup_amount">Amount (৳)</Label>
             <Input id="topup_amount" type="number" min="100" step="100" placeholder="e.g. 5000"
               value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
@@ -534,7 +534,7 @@ function AccountManagerSection({ settings }: { settings: ResellerSettings }) {
             <p className="font-medium text-foreground">No account manager assigned yet</p>
             <p className="mt-1 text-sm text-muted-foreground">Contact support to get a dedicated account manager for your Reseller account.</p>
           </div>
-          <a href="mailto:support@wachatra.com"
+          <a href="mailto:support@nextcorebd.com"
             className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors">
             <Mail className="size-4" /> Contact support
           </a>
@@ -548,7 +548,7 @@ function AccountManagerSection({ settings }: { settings: ResellerSettings }) {
             'White-label panel with your own domain and branding',
             'Earn credit margin on every message your clients send',
             'Priority technical support and onboarding assistance',
-            'Co-marketing opportunities with the Wachatra team',
+            'Co-marketing opportunities with the N.C WaCRM team',
             'Early access to new features before general release',
           ].map(b => (
             <li key={b} className="flex items-start gap-2">
@@ -607,7 +607,7 @@ export function ResellerPanel() {
   if (accountType !== 'reseller') {
     return (
       <>
-        <SettingsPanelHead title="Reseller Program" description="Become a Wachatra partner — white-label the platform for your clients." />
+        <SettingsPanelHead title="Reseller Program" description="Become a N.C WaCRM partner — white-label the platform for your clients." />
         <div className="mt-8 flex flex-col items-center gap-6 rounded-2xl border border-dashed border-primary/30 bg-primary/5 py-16 text-center">
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <RefreshCw className="size-8 text-primary" />
@@ -640,7 +640,7 @@ export function ResellerPanel() {
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <StatCard icon={Wallet} label="Wallet balance"
-          value={`₹${settings.wallet_balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+          value={`৳${settings.wallet_balance.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`}
           sub="Available credits" />
         <StatCard icon={Percent} label="Your margin"
           value={`${settings.credit_margin_pct}%`}

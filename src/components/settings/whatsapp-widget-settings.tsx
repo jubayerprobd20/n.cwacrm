@@ -239,7 +239,7 @@ export function WhatsAppWidgetSettings() {
   }
 
   const embedCodeSnippet = useMemo(() => {
-    return `<!-- Wachatra WhatsApp Widget -->
+    return `<!-- N.C WaCRM WhatsApp Widget -->
 <script 
   src="${scriptHost}/js/widget.js" 
   data-org-id="${accountId || 'YOUR_ORGANIZATION_ID'}" 
@@ -331,13 +331,13 @@ export function WhatsAppWidgetSettings() {
                   id="phone-input"
                   value={agentPhone}
                   onChange={(e) => setAgentPhone(e.target.value)}
-                  placeholder="919876543210"
+                  placeholder="8801712345678"
                   required
                   disabled={!canEditSettings || saving}
                   className="bg-muted/50 border-border text-foreground"
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  Include country code without any plus (+), hyphens (-), or spaces (e.g. &quot;91&quot; for India followed by 10 digits).
+                  Include the Bangladesh country code without any plus (+), hyphens (-), or spaces (e.g. &quot;880&quot; followed by the mobile number).
                 </p>
               </div>
 

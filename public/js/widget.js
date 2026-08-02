@@ -7,7 +7,7 @@
 
   const orgId = scriptTag ? scriptTag.getAttribute('data-org-id') : null;
   if (!orgId) {
-    console.error('[Wachatra Widget] Missing data-org-id attribute.');
+    console.error('[N.C WaCRM Widget] Missing data-org-id attribute.');
     return;
   }
 
@@ -26,7 +26,7 @@
       initWidget(config);
     })
     .catch(err => {
-      console.warn('[Wachatra Widget] Initialization failed:', err);
+      console.warn('[N.C WaCRM Widget] Initialization failed:', err);
     });
 
   function initWidget(config) {
@@ -39,7 +39,7 @@
 
     // Create wrapper div
     const wrapper = document.createElement('div');
-    wrapper.id = 'wachatra-widget-root';
+    wrapper.id = 'ncwacrm-widget-root';
     wrapper.style.position = 'fixed';
     wrapper.style.bottom = '20px';
     wrapper.style[position] = '20px';
@@ -412,7 +412,7 @@
     // Avatar Initials fallback
     const initials = config.name ? config.name.substring(0, 2).toUpperCase() : 'WA';
     const avatarHTML = avatarUrl 
-      ? `<img class="avatar-img" src="${avatarUrl}" alt="${config.name || 'Wachatra Agent'}">`
+      ? `<img class="avatar-img" src="${avatarUrl}" alt="${config.name || 'N.C WaCRM Agent'}">`
       : initials;
 
     chatWin.innerHTML = `
@@ -446,7 +446,7 @@
             </svg>
           </button>
         </div>
-        <a class="branding" href="https://wachatra.com" target="_blank" rel="noopener">Powered by Wachatra</a>
+        <a class="branding" href="https://nextcorebd.com/" target="_blank" rel="noopener">Powered by NextCore BD</a>
       </div>
     `;
 

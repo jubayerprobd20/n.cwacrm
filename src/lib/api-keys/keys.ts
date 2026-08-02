@@ -12,17 +12,17 @@
 //   only slow the per-request auth lookup. A fast hash with a UNIQUE
 //   index is the correct, indexable choice for opaque secrets.
 //
-// Why the `wachatra_live_` prefix
+// Why the `ncwacrm_live_` prefix
 //   - Self-identifying: a leaked string is instantly recognisable as
-//     a Wachatra key (handy for secret-scanners like GitGuardian).
-//   - Forward-compatible: leaves room for a `wachatra_test_` variant if
+//     a N.C WaCRM key (handy for secret-scanners like GitGuardian).
+//   - Forward-compatible: leaves room for a `ncwacrm_test_` variant if
 //     a sandbox mode is ever added, without reshaping the format.
 // ============================================================
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 /** Secret prefix on every key. Part of the plaintext, not a secret. */
-export const API_KEY_PREFIX = 'wachatra_live_';
+export const API_KEY_PREFIX = 'ncwacrm_live_';
 
 /**
  * Length of the non-secret display prefix stored in `key_prefix` and

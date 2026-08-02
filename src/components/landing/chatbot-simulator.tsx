@@ -17,7 +17,7 @@ export function ChatbotSimulator() {
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: "bot",
-      text: "👋 Hello! Welcome to Wachatra Concierge. How can I help your business grow today?",
+      text: "👋 Hello! Welcome to N.C WaCRM Concierge. How can I help your business grow today?",
       time: "10:00 AM",
       isInteractive: true,
       buttons: ["💬 Try AI Auto-Reply", "💳 Send Payment Link", "📅 Book Appointment"]
@@ -47,12 +47,12 @@ export function ChatbotSimulator() {
       let botResponse: Message = { sender: "bot", text: "", time: botTime };
 
       if (action.includes("AI Auto-Reply")) {
-        botResponse.text = "🤖 [AI Engine]: Our system queries your connected knowledge base in under 200ms. Here is your answer:\n\n'Wachatra integrates directly with the official Meta Cloud API, protecting your numbers from ban risks. Auto-replies are trained on your product sheets.'";
+        botResponse.text = "🤖 [AI Engine]: Our system queries your connected knowledge base in under 200ms. Here is your answer:\n\n'N.C WaCRM integrates directly with the official Meta Cloud API, protecting your numbers from ban risks. Auto-replies are trained on your product sheets.'";
       } else if (action.includes("Payment Link")) {
-        botResponse.text = "💳 [Payment Gateway]: Generated GST-compliant payment link for invoice #INV-4921:\n\n*Amount:* ₹2,999.00\n*Link:* pay.wachatra.com/inv-4921";
+        botResponse.text = "💳 [Payment Gateway]: Generated VAT-compliant payment link for invoice #INV-4921:\n\n*Amount:* ৳2,999.00\n*Link:* pay.nextcorebd.com/inv-4921";
         botResponse.paymentLink = true;
       } else if (action.includes("Book Appointment")) {
-        botResponse.text = "📅 [Calendar Sync]: I found 3 available slots for a 1-on-1 strategy call tomorrow:\n\n1. 11:00 AM IST\n2. 02:30 PM IST\n3. 04:00 PM IST\n\nPlease select a slot number.";
+        botResponse.text = "📅 [Calendar Sync]: I found 3 available slots for a 1-on-1 strategy call tomorrow:\n\n1. 11:00 AM BST\n2. 02:30 PM BST\n3. 04:00 PM BST\n\nPlease select a slot number.";
         botResponse.isInteractive = true;
         botResponse.buttons = ["Slot 1: 11:00 AM", "Slot 2: 02:30 PM", "Slot 3: 04:00 PM"];
       } else if (action.includes("Slot")) {
@@ -77,7 +77,7 @@ export function ChatbotSimulator() {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-white">Wachatra AI Concierge</span>
+              <span className="text-sm font-bold text-white">N.C WaCRM AI Concierge</span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             </div>
             <span className="text-[10px] text-muted-foreground">Demo Chatbot Simulator</span>
@@ -97,7 +97,7 @@ export function ChatbotSimulator() {
           >
             <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase font-mono px-1">
               {msg.sender === "user" ? <User className="w-3 h-3 text-primary" /> : <Bot className="w-3 h-3 text-emerald-400" />}
-              {msg.sender === "user" ? "You" : "Wachatra Bot"}
+              {msg.sender === "user" ? "You" : "N.C WaCRM Bot"}
             </div>
             <div
               className={`rounded-2xl px-4 py-3 text-xs leading-relaxed max-w-[85%] shadow-md whitespace-pre-line ${
@@ -113,10 +113,10 @@ export function ChatbotSimulator() {
                 <div className="mt-4 p-3.5 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center font-bold text-emerald-400 text-[10px]">
-                      ₹
+                      ৳
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground block leading-none">RAZORPAY LINK</span>
+                      <span className="text-[10px] text-muted-foreground block leading-none">bKash / Card Link</span>
                       <span className="text-xs font-bold text-white mt-1 block">invoice_4921</span>
                     </div>
                   </div>
@@ -150,7 +150,7 @@ export function ChatbotSimulator() {
           <div className="flex flex-col items-start space-y-1.5">
             <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase font-mono px-1">
               <Bot className="w-3 h-3 text-emerald-400" />
-              Wachatra Bot
+              N.C WaCRM Bot
             </div>
             <div className="rounded-2xl px-4 py-3 bg-neutral-900 border border-neutral-800 text-white flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0s" }} />

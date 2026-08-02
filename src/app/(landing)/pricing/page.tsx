@@ -13,60 +13,60 @@ export default function PricingPage() {
     {
       name: "Starter",
       tagline: "Full control. You run it.",
-      price: "₹2,999",
-      period: "/WABA/month",
+      price: "৳2,999",
+      period: "/month",
       setup: "No setup fee",
       cta: "Get Started",
-      onboarding: "Access provisioned within 24 hours of payment.",
+      onboarding: "Set up your workspace and connect one WhatsApp Business number.",
       recommended: false,
       details: "Perfect for tech-savvy business owners who want to handle the configuration themselves.",
       features: [
-        "1 WhatsApp Number Session",
-        "1,000 Contacts Limit",
-        "Shared Inbox (Up to 3 Agents)",
-        "Basic Auto-Responder",
+        "1 WhatsApp Business number",
+        "Contact usage dashboard",
+        "Shared team inbox",
+        "Basic automations",
         "Broadcast Templates Scheduler",
-        "Email Support"
+        "Self-service setup documentation"
       ]
     },
     {
       name: "Growth",
       tagline: "We launch you. You own it.",
-      price: "₹9,999",
+      price: "৳9,999",
       period: "for first month",
-      setup: "₹2,999 /WABA/month after",
+      setup: "৳2,999/month after the first month",
       cta: "Book a Call",
-      onboarding: "Onboarding begins within 48 hours. Setup complete within 7 days.",
+      onboarding: "Assisted onboarding and workspace configuration.",
       recommended: true,
       details: "Our team takes care of setting up your channels and workflows so you can start right away.",
       features: [
-        "3 WhatsApp Number Sessions",
-        "10,000 Contacts Limit",
-        "Unlimited Inbox Agents",
+        "One WhatsApp Business number",
+        "10,000-contact usage plan",
+        "Shared team inbox",
         "No-Code Chatbot Flow Builder",
         "AI Reply Assistant (BYO Key)",
-        "Google Sheets & Webhooks Sync",
-        "Priority Chat Support"
+        "Webhooks & public API access",
+        "Assisted setup"
       ]
     },
     {
       name: "Managed",
       tagline: "We run it. You check results.",
-      price: "₹29,999",
+      price: "৳29,999",
       period: "for first month",
-      setup: "₹2,999 /WABA/month after",
+      setup: "৳2,999/month after the first month",
       cta: "Book a Call",
-      onboarding: "Application required. Pilot month available — ask us.",
+      onboarding: "Custom onboarding scope is agreed before work begins.",
       recommended: false,
       details: "Fully outsourced operations, custom chatbot prompt programming, and a dedicated manager.",
       features: [
-        "Unlimited WhatsApp Numbers",
-        "Unlimited Contacts & Uploads",
-        "GST Billing & Invoicing (InvoBill)",
-        "School/Hospital ERP Connect",
-        "Full Agency White-Label Portal",
-        "Custom Domain Mapping",
-        "24/7 Dedicated Account Manager"
+        "High-volume contact plan",
+        "Advanced automation configuration",
+        "AI assistant workspace setup",
+        "Reseller workspace controls",
+        "Branding settings",
+        "Custom implementation scope",
+        "Dedicated onboarding"
       ]
     }
   ];
@@ -78,9 +78,9 @@ export default function PricingPage() {
         { name: "No-Code Automation Builder", starter: "yes", growth: "yes", managed: "yes" },
         { name: "AI Assistant (trained on your docs)", starter: "DIY", growth: "DIY", managed: "We configure it" },
         { name: "Shared Team Inbox", starter: "yes", growth: "yes", managed: "yes" },
-        { name: "27+ Integrations Access", starter: "yes", growth: "yes", managed: "yes" },
-        { name: "0% Message Markup (Meta Direct Billing)", starter: "yes", growth: "yes", managed: "yes" },
-        { name: "Click-to-WhatsApp Ads (CTWA)", starter: "yes", growth: "yes", managed: "yes" }
+        { name: "Webhooks & public API", starter: "yes", growth: "yes", managed: "yes" },
+        { name: "Meta conversation charges", starter: "separate", growth: "separate", managed: "separate" },
+        { name: "WhatsApp Business API connection", starter: "DIY", growth: "assisted", managed: "assisted" }
       ]
     },
     {
@@ -88,19 +88,19 @@ export default function PricingPage() {
       features: [
         { name: "Meta Business Verification help", starter: "DIY", growth: "DIY", managed: "yes" },
         { name: "WhatsApp Number Connection", starter: "DIY", growth: "yes", managed: "yes" },
-        { name: "WhatsApp Co-existence Setup", starter: "DIY", growth: "yes", managed: "yes" },
+        { name: "WhatsApp Business setup", starter: "DIY", growth: "yes", managed: "yes" },
         { name: "Platform Config & Team Access", starter: "DIY", growth: "yes", managed: "yes" },
         { name: "Kickoff Meeting", starter: "DIY", growth: "yes", managed: "yes" },
         { name: "Automations Built For You", starter: "DIY", growth: "DIY", managed: "2–3 core automations" },
         { name: "Message Templates Written & Submitted", starter: "DIY", growth: "DIY", managed: "yes" },
-        { name: "Integrations Wired In", starter: "DIY", growth: "DIY", managed: "yes" }
+        { name: "Custom implementation scope", starter: "DIY", growth: "DIY", managed: "on request" }
       ]
     },
     {
       category: "Support & Strategy",
       features: [
-        { name: "Priority WhatsApp Support Group", starter: "yes", growth: "yes", managed: "yes" },
-        { name: "Monthly Group Q&A with Lakshit", starter: "yes", growth: "yes", managed: "yes" },
+        { name: "Support channel", starter: "standard", growth: "priority", managed: "dedicated" },
+        { name: "Monthly product guidance", starter: "yes", growth: "yes", managed: "yes" },
         { name: "1-on-1 Strategy Call", starter: "DIY", growth: "Onboarding call included", managed: "Monthly deep-dive (60 min)" },
         { name: "Dedicated Account Manager", starter: "DIY", growth: "DIY", managed: "yes" }
       ]
@@ -129,7 +129,7 @@ export default function PricingPage() {
             </span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            After setup, every plan is ₹2,999/WABA/month — flat. The difference is how much help you get on day one. You choose your level of support.
+            Transparent BDT pricing for Bangladesh businesses. Meta/WhatsApp conversation charges and applicable taxes are billed separately.
           </p>
         </section>
 
@@ -203,7 +203,7 @@ export default function PricingPage() {
             ))}
           </div>
           <div className="text-center pt-8">
-            <p className="text-xs text-muted-foreground font-medium">*Pricing exclusive of GST</p>
+            <p className="text-xs text-muted-foreground font-medium">*Applicable VAT, government fees, and Meta/WhatsApp charges are separate.</p>
           </div>
         </section>
 
@@ -218,7 +218,7 @@ export default function PricingPage() {
             <table className="w-full min-w-[650px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-neutral-900 bg-neutral-900/40 text-muted-foreground font-bold text-xs">
-                  <th className="p-4.5 w-[40%]">All plans · per WABA/month</th>
+                  <th className="p-4.5 w-[40%]">All plans · per month</th>
                   <th className="p-4.5 text-center w-[20%]">Starter</th>
                   <th className="p-4.5 text-center w-[20%]">Growth</th>
                   <th className="p-4.5 text-center w-[20%]">Managed</th>

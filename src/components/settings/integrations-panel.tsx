@@ -120,7 +120,7 @@ export function IntegrationsPanel() {
   const [sheets, setSheets] = useState<SheetsConfig>({
     connected: false,
     url: '',
-    sheetName: 'Wachatra Leads',
+    sheetName: 'N.C WaCRM Leads',
     syncContacts: true,
     syncMessages: false,
   });
@@ -352,7 +352,7 @@ export function IntegrationsPanel() {
     <section className="space-y-6 animate-in fade-in-50 duration-200">
       <SettingsPanelHead
         title="Integrations Hub"
-        description="Sync conversations, contacts, and automated checkouts across Shopify/WooCommerce stores and request instant payments via Razorpay and UPI."
+        description="Sync conversations, contacts, and automated checkouts across Shopify/WooCommerce stores and request instant payments via SSLCommerz, bKash & Cards."
       />
 
       {/* Group 1: E-Commerce & Payment Gateways */}
@@ -446,7 +446,7 @@ export function IntegrationsPanel() {
                 <CreditCard className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <CardTitle className="text-sm font-semibold text-foreground">Razorpay Gateway</CardTitle>
+                <CardTitle className="text-sm font-semibold text-foreground">bKash / SSLCommerz (Razorpay API)</CardTitle>
                 <CardDescription className="text-xs text-muted-foreground truncate">
                   {rzpKeyId ? 'Merchant Keys Configured' : 'Generate invoice checkout links dynamically'}
                 </CardDescription>
@@ -485,7 +485,7 @@ export function IntegrationsPanel() {
                 <CreditCard className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <CardTitle className="text-sm font-semibold text-foreground">UPI Payments</CardTitle>
+                <CardTitle className="text-sm font-semibold text-foreground">bKash & Nagad QR Payments</CardTitle>
                 <CardDescription className="text-xs text-muted-foreground truncate">
                   {upiVpa ? `VPA: ${upiVpa}` : 'Instant zero-fee customer QR codes'}
                 </CardDescription>

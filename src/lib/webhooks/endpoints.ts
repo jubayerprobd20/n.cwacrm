@@ -8,7 +8,7 @@
 
 import { randomBytes } from 'node:crypto';
 
-/** Secret prefix — self-identifying, like `wachatra_live_` for keys. */
+/** Secret prefix — self-identifying, like `ncwacrm_live_` for keys. */
 export const WEBHOOK_SECRET_PREFIX = 'whsec_';
 
 /**

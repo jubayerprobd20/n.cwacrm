@@ -115,9 +115,9 @@ async function deliverOne(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Wachatra-Event': event,
-        'X-Wachatra-Webhook-Id': row.id,
-        'X-Wachatra-Signature': buildSignatureHeader(payload, secret, tsSeconds),
+        'X-NCWaCRM-Event': event,
+        'X-NCWaCRM-Webhook-Id': row.id,
+        'X-NCWaCRM-Signature': buildSignatureHeader(payload, secret, tsSeconds),
       },
       body: payload,
       // Do NOT follow redirects — a public URL could 3xx-bounce to an

@@ -112,6 +112,7 @@ export function CustomFieldsPanel() {
       field_type: 'text',
       user_id: user.id,
       account_id: accountId,
+      organization_id: accountId,
     });
     setCreating(false);
 

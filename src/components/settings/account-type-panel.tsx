@@ -148,7 +148,7 @@ export function AccountTypePanel() {
     <>
       <SettingsPanelHead
         title="Account Type"
-        description="Choose how you use Wachatra — as a direct business or as an agency reselling services to clients."
+        description="Choose how you use N.C WaCRM — as a direct business or as an agency reselling services to clients."
       />
 
       {loading ? (

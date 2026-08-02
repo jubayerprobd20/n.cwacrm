@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.reseller_settings (
   -- % markup applied on top of platform credit costs
   credit_margin_pct NUMERIC(5,2) NOT NULL DEFAULT 0
     CHECK (credit_margin_pct >= 0 AND credit_margin_pct <= 100),
-  -- Razorpay wallet balance available to distribute to clients
+  -- Wallet balance available to distribute to clients
   wallet_balance    NUMERIC(14,2) NOT NULL DEFAULT 0,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -79,8 +79,8 @@ CREATE TABLE IF NOT EXISTS public.credit_transactions (
   type             TEXT NOT NULL
     CHECK (type IN ('topup', 'usage', 'adjustment', 'refund')),
   amount           NUMERIC(14,2) NOT NULL,  -- positive = credit, negative = debit
-  currency         TEXT NOT NULL DEFAULT 'INR',
-  razorpay_payment_id TEXT,
+  currency         TEXT NOT NULL DEFAULT 'BDT',
+  payment_reference TEXT,
   description      TEXT,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

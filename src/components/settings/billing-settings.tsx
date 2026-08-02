@@ -152,7 +152,7 @@ export function BillingSettings() {
       const options = {
         key: data.keyId,
         subscription_id: data.subscriptionId,
-        name: 'Wachatra',
+        name: 'N.C WaCRM',
         description: `Upgrade to ${planId.toUpperCase()} Plan`,
         handler: function () {
           toast.success('Subscription created successfully! Updating settings...');
@@ -412,9 +412,9 @@ export function BillingSettings() {
                     Limits: {planCard.messageLimit} · {planCard.contactLimit}
                   </CardDescription>
                   <div className="mt-4 flex items-baseline">
-                    <span className="text-2xl font-semibold text-foreground">₹</span>
+                    <span className="text-2xl font-semibold text-foreground">৳</span>
                     <span className="text-4xl font-extrabold tracking-tight text-foreground">
-                      {planCard.price.toLocaleString('en-IN')}
+                      {planCard.price.toLocaleString('en-BD')}
                     </span>
                     <span className="ml-1 text-sm text-muted-foreground">/mo</span>
                   </div>
@@ -466,7 +466,7 @@ export function BillingSettings() {
       </div>
 
       <div className="text-center text-4xs text-muted-foreground mt-4">
-        All plans are billed monthly. Secure payments processed via Razorpay. Cancel anytime under your dashboard settings.
+        All plans are billed monthly. Secure payments processed via SSLCommerz, bKash & Cards. Cancel anytime under your dashboard settings.
       </div>
     </div>
   );

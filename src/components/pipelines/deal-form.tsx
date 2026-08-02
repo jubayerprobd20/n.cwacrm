@@ -197,7 +197,7 @@ export function DealForm({
       }
       const { error } = await supabase
         .from("deals")
-        .insert({ ...payload, user_id: user.id, account_id: accountId, status: "open" });
+        .insert({ ...payload, user_id: user.id, account_id: accountId, organization_id: accountId, status: "open" });
       if (error) {
         toast.error(t("toastFailedCreate"));
         setSaving(false);

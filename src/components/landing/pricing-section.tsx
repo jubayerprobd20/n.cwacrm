@@ -12,60 +12,60 @@ export function PricingSection() {
     {
       name: "Starter",
       tagline: "Full control. You run it.",
-      price: "₹2,999",
-      period: "/WABA/month",
+      price: "৳2,999",
+      period: "/month",
       setup: "No setup fee",
       cta: "Get Started",
-      onboarding: "Access provisioned within 24 hours of payment.",
+      onboarding: "Set up your workspace and connect one WhatsApp Business number.",
       popular: false,
       details: "Perfect for tech-savvy business owners who want to handle the configuration themselves.",
       features: [
-        "1 WhatsApp Number Session",
-        "1,000 Contacts Limit",
-        "Shared Inbox (Up to 3 Agents)",
-        "Basic Auto-Responder",
+        "1 WhatsApp Business number",
+        "Contact usage dashboard",
+        "Shared team inbox",
+        "Basic automations",
         "Broadcast Templates Scheduler",
-        "Email Support"
+        "Self-service setup documentation"
       ]
     },
     {
       name: "Growth",
       tagline: "We launch you. You own it.",
-      price: "₹9,999",
+      price: "৳9,999",
       period: "first month",
-      setup: "₹2,999 /WABA/month after",
+      setup: "৳2,999/month after the first month",
       cta: "Book a Call",
-      onboarding: "Onboarding begins within 48 hours. Setup complete within 7 days.",
+      onboarding: "Assisted onboarding and workspace configuration.",
       popular: true,
       details: "Our team takes care of setting up your channels and workflows so you can start right away.",
       features: [
-        "3 WhatsApp Number Sessions",
-        "10,000 Contacts Limit",
-        "Unlimited Inbox Agents",
+        "One WhatsApp Business number",
+        "10,000-contact usage plan",
+        "Shared team inbox",
         "No-Code Chatbot Flow Builder",
         "AI Reply Assistant (BYO Key)",
-        "Google Sheets & Webhooks Sync",
-        "Priority Chat Support"
+        "Webhooks & public API access",
+        "Assisted setup"
       ]
     },
     {
       name: "Managed",
       tagline: "We run it. You check results.",
-      price: "₹29,999",
+      price: "৳29,999",
       period: "first month",
-      setup: "₹2,999 /WABA/month after",
+      setup: "৳2,999/month after the first month",
       cta: "Book a Call",
-      onboarding: "Application required. Pilot month available — ask us.",
+      onboarding: "Custom onboarding scope is agreed before work begins.",
       popular: false,
       details: "Fully outsourced operations, custom chatbot prompt programming, and a dedicated manager.",
       features: [
-        "Unlimited WhatsApp Numbers",
-        "Unlimited Contacts & Uploads",
-        "GST Billing & Invoicing (InvoBill)",
-        "School/Hospital ERP Connect",
-        "Full Agency White-Label Portal",
-        "Custom Domain Mapping",
-        "24/7 Dedicated Account Manager"
+        "High-volume contact plan",
+        "Advanced automation configuration",
+        "AI assistant workspace setup",
+        "Reseller workspace controls",
+        "Branding settings",
+        "Custom implementation scope",
+        "Dedicated onboarding"
       ]
     }
   ];
@@ -81,7 +81,7 @@ export function PricingSection() {
             Flexible Plans, No Hidden Fees
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-            After setup, every plan is ₹2,999/WABA/month — flat. The difference is how much help you get on day one.
+            Transparent BDT pricing for Bangladesh businesses. Meta/WhatsApp conversation charges and applicable taxes are billed separately.
           </p>
         </div>
 
@@ -141,7 +141,7 @@ export function PricingSection() {
           ))}
         </div>
         <div className="text-center pt-8">
-          <p className="text-xs text-muted-foreground font-medium">*Pricing exclusive of GST</p>
+          <p className="text-xs text-muted-foreground font-medium">*Applicable VAT, government fees, and Meta/WhatsApp charges are separate.</p>
         </div>
       </div>
     </section>

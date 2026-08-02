@@ -214,7 +214,7 @@ export default function BusinessPage() {
 
               <div className="space-y-2">
                 <Label>Contact Phone</Label>
-                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 XXXXXXXXXX" />
+                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+880 1XXXXXXXXX" />
               </div>
               <div className="space-y-2">
                 <Label>Website URL</Label>
@@ -256,7 +256,7 @@ export default function BusinessPage() {
                 <Input value={newSvcName} onChange={e => setNewSvcName(e.target.value)} placeholder="Premium Suite Booking" />
               </div>
               <div className="space-y-1">
-                <Label>Pricing (INR)</Label>
+                <Label>Pricing (BDT)</Label>
                 <Input value={newSvcPrice} onChange={e => setNewSvcPrice(e.target.value)} placeholder="4999" />
               </div>
               <div className="space-y-1">
@@ -283,7 +283,7 @@ export default function BusinessPage() {
                     <h4 className="font-semibold text-sm">{svc.name}</h4>
                     <p className="text-xs text-muted-foreground mt-1">{svc.description || 'No description'}</p>
                     <div className="mt-3 text-xs text-primary font-bold">
-                      Price: ₹{svc.price}
+                      Price: ৳{svc.price}
                     </div>
                   </Card>
                 ))}

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.wachatra.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wacrm.nextcorebd.com'
   const inviteUrl = `${baseUrl}/join-reseller?token=${data.token}`
 
   return NextResponse.json({ invite: { ...data, url: inviteUrl } }, { status: 201 })
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.wachatra.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wacrm.nextcorebd.com'
   const invites = (data ?? []).map(i => ({
     ...i,
     url: `${baseUrl}/join-reseller?token=${i.token}`,

@@ -268,6 +268,7 @@ export function ContactDetailView({
     const { error } = await supabase.from('contact_notes').insert({
       contact_id: contactId,
       account_id: accountId,
+      organization_id: accountId,
       user_id: user.id,
       note_text: newNote.trim(),
     });
@@ -313,6 +314,7 @@ export function ContactDetailView({
           contact_id: contactId,
           custom_field_id: fieldId,
           value: val.trim(),
+          organization_id: accountId,
         }));
 
       if (rows.length > 0) {

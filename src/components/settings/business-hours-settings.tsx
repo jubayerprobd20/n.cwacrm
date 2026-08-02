@@ -18,7 +18,7 @@ interface DailyHourConfig {
 }
 
 const COMMON_TIMEZONES = [
-  { name: 'India Standard Time (IST) - Asia/Kolkata', value: 'Asia/Kolkata' },
+  { name: 'Bangladesh Standard Time (BST) - Asia/Dhaka', value: 'Asia/Dhaka' },
   { name: 'Coordinated Universal Time (UTC)', value: 'UTC' },
   { name: 'Eastern Time (ET) - America/New_York', value: 'America/New_York' },
   { name: 'Pacific Time (PT) - America/Los_Angeles', value: 'America/Los_Angeles' },
@@ -58,7 +58,7 @@ export function BusinessHoursSettings() {
 
   // Settings State
   const [isEnabled, setIsEnabled] = useState(false);
-  const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const [timezone, setTimezone] = useState('Asia/Dhaka');
   const [oooMessage, setOooMessage] = useState(
     'Thank you for your message. We are currently closed and will get back to you during our working hours.'
   );
@@ -86,7 +86,7 @@ export function BusinessHoursSettings() {
 
       if (data) {
         setIsEnabled(data.is_enabled);
-        setTimezone(data.timezone || 'Asia/Kolkata');
+        setTimezone(data.timezone || 'Asia/Dhaka');
         setOooMessage(data.ooo_message || '');
         if (data.daily_hours && typeof data.daily_hours === 'object') {
           // Merge defaults with saved keys in case of missing days

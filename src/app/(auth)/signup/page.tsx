@@ -87,7 +87,7 @@ function SignupPageInner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         if (inviteToken) {
-          router.push(`/join/${encodeURIComponent(inviteToken)}`);
+          window.location.href = `/join/${encodeURIComponent(inviteToken)}`;
           return;
         }
 
@@ -334,7 +334,7 @@ function SignupPageInner() {
               </svg>
             </div>
             <div className="flex flex-col text-left">
-              <span className="text-lg font-bold tracking-tight text-white leading-none">Wachatra</span>
+              <span className="text-lg font-bold tracking-tight text-white leading-none">N.C WaCRM</span>
               <span className="text-[10px] text-indigo-400/80 mt-1 font-bold tracking-wider uppercase">Business OS</span>
             </div>
           </div>
@@ -356,7 +356,7 @@ function SignupPageInner() {
                   <CardDescription className="text-slate-400 text-sm mt-1">
                     {inviteToken
                       ? "Verify your details, then join your team workspace."
-                      : "Get started with Wachatra CRM"}
+                      : "Get started with N.C WaCRM"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -575,7 +575,7 @@ function SignupPageInner() {
                       <p className="text-[10px] text-slate-500 leading-tight">
                         {typeof window !== "undefined" && window.location.origin.includes("localhost")
                           ? `Your URL: ${window.location.origin}/dashboard?org=${orgSlug || "acme-corp"}`
-                          : `Your URL: https://${orgSlug || "acme-corp"}.${process.env.NEXT_PUBLIC_MAIN_DOMAIN || "wachatra.com"}/app/dashboard`
+                          : `Your URL: https://${orgSlug || "acme-corp"}.${process.env.NEXT_PUBLIC_MAIN_DOMAIN || "wacrm.nextcorebd.com"}/app/dashboard`
                         }
                       </p>
                       {slugError && (

@@ -15,7 +15,7 @@
     "createAccount": "Create account"
   },
   "Sidebar": {
-    "title": "CRM Template for WhatsApp",
+    "title": "N.C WaCRM",
     "dashboard": "Dashboard",
     "inbox": "Inbox",
     "notifications": "Notifications",
@@ -1503,14 +1503,22 @@
       "appearance": "Appearance",
       "whatsapp": "WhatsApp",
       "templates": "Templates",
+      "canned": "Canned responses",
+      "widget": "Chat widget",
+      "business_hours": "Business hours",
       "fields": "Fields & tags",
       "deals": "Deals & currency",
       "members": "Team members",
-      "api": "API keys"
+      "billing": "Billing & Plans",
+      "api": "API keys",
+      "integrations": "Integrations",
+      "account_type": "Account type",
+      "reseller": "Reseller program"
     },
     "groups": {
       "account": "Account",
-      "workspace": "Workspace"
+      "workspace": "Workspace",
+      "reseller": "Partner"
     },
     "profile": {
       "title": "Your profile",

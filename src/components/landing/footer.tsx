@@ -22,10 +22,10 @@ export function Footer() {
                 <path d="M8 12h0.01M16 12h0.01" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <span className="text-lg font-bold text-white tracking-tight">Wachatra</span>
+            <span className="text-lg font-bold text-white tracking-tight">N.C WaCRM</span>
           </Link>
           <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
-            Wachatra is a premium AI-powered WhatsApp CRM and customer support automation platform. Automate business communication, configure smart chatbots, organize leads, and sync calendar reminders using the official WhatsApp Business API.
+            N.C WaCRM is a premium AI-powered WhatsApp CRM and customer support automation platform. Automate business communication, configure smart chatbots, organize leads, and sync calendar reminders using the official WhatsApp Business API.
           </p>
           <div className="pt-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-[10px] font-extrabold uppercase tracking-wider">
@@ -97,11 +97,11 @@ export function Footer() {
         <div className="col-span-1 space-y-4">
           <h6 className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Contact Us</h6>
           <ul className="space-y-2.5 text-xs text-muted-foreground">
-            <li>Wachatra Technologies</li>
-            <li>Pune, Maharashtra, India</li>
+            <li>NextCore BD Technologies</li>
+            <li>Bangladesh</li>
             <li className="pt-1">
-              <a href="mailto:support@wachatra.com" className="text-primary hover:underline">
-                support@wachatra.com
+              <a href="mailto:support@nextcorebd.com" className="text-primary hover:underline">
+                support@nextcorebd.com
               </a>
             </li>
           </ul>
@@ -123,10 +123,19 @@ export function Footer() {
       {/* Legal & Copyright */}
       <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-border/20 space-y-4 relative z-10 text-center">
         <p className="text-[10px] leading-relaxed text-muted-foreground max-w-3xl mx-auto">
-          "Wachatra uses WhatsApp Business API solutions in accordance with Meta and WhatsApp Business policies. Businesses are responsible for obtaining user consent before initiating communication."
+          "N.C WaCRM uses WhatsApp Business API solutions in accordance with Meta and WhatsApp Business policies. Businesses are responsible for obtaining user consent before initiating communication."
         </p>
-        <div className="text-[10px] text-muted-foreground pt-2">
-          © {currentYear} Wachatra. All rights reserved.
+        <div className="text-[10px] text-muted-foreground pt-2 flex items-center justify-center gap-2">
+          <span>© {currentYear} N.C WaCRM. All rights reserved.</span>
+          <span>•</span>
+          <a
+            href="https://nextcorebd.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            Powered by NextCore BD
+          </a>
         </div>
       </div>
     </footer>
