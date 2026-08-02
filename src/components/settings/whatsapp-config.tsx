@@ -131,8 +131,10 @@ export function WhatsAppConfig() {
         }`
       : '';
 
-  const fetchConfig = useCallback(async (acctId: string) => {
-    setLoading(true);
+  const fetchConfig = useCallback(async (acctId: string, silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       // Load form values from Supabase (shows what's in DB).
       // Switched from `user_id` (which would only match the row's
@@ -158,7 +160,9 @@ export function WhatsAppConfig() {
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
-        setSelectedProvider(data.provider || 'meta');
+        if (!silent) {
+          setSelectedProvider(data.provider || 'meta');
+        }
       } else {
         setConfig(null);
         setPhoneNumberId('');
@@ -167,7 +171,9 @@ export function WhatsAppConfig() {
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
-        setSelectedProvider('meta');
+        if (!silent) {
+          setSelectedProvider('meta');
+        }
       }
       // Clear any stale probe result when reloading the row.
       setRegistrationProbe(null);
@@ -548,7 +554,7 @@ export function WhatsAppConfig() {
             initialInstanceName={config?.evolution_instance_name || ''}
             initialStatus={config?.evolution_instance_status || 'disconnected'}
             onConfigSaved={() => {
-              if (accountId) fetchConfig(accountId);
+              if (accountId) fetchConfig(accountId, true);
             }}
           />
         ) : selectedProvider === 'wasender' ? (
@@ -558,7 +564,7 @@ export function WhatsAppConfig() {
             initialDeviceId={config?.wasender_device_id || ''}
             initialStatus={config?.wasender_status || 'disconnected'}
             onConfigSaved={() => {
-              if (accountId) fetchConfig(accountId);
+              if (accountId) fetchConfig(accountId, true);
             }}
           />
         ) : (

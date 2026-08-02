@@ -51,16 +51,9 @@ export async function GET() {
       .eq('account_id', accountId)
       .maybeSingle();
 
-    if (configErr || !config || config.provider !== 'evolution') {
-      return NextResponse.json(
-        { connected: false, status: 'disconnected', message: 'Evolution API not configured' },
-        { status: 200 }
-      );
-    }
-
-    const evoBaseUrl = getEvolutionApiUrl(config.evolution_base_url);
-    const evoApiKey = getEvolutionApiKey(config.evolution_api_key);
-    const evoInstanceName = (config.evolution_instance_name || '').trim();
+    const evoBaseUrl = getEvolutionApiUrl(config?.evolution_base_url);
+    const evoApiKey = getEvolutionApiKey(config?.evolution_api_key);
+    const evoInstanceName = (config?.evolution_instance_name || 'wacrm-instance').trim();
 
     if (!evoBaseUrl || !evoApiKey || !evoInstanceName) {
       return NextResponse.json(
@@ -88,21 +81,23 @@ export async function GET() {
       }
     }
 
-    // Sync status in database
-    await supabase
-      .from('whatsapp_config')
-      .update({
-        evolution_instance_status: state.toLowerCase(),
-        status: isConnected ? 'connected' : 'disconnected',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', config.id);
+    // Sync status in database if config row exists
+    if (config?.id) {
+      await supabase
+        .from('whatsapp_config')
+        .update({
+          evolution_instance_status: state.toLowerCase(),
+          status: isConnected ? 'connected' : 'disconnected',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', config.id);
+    }
 
     return NextResponse.json({
       connected: isConnected,
       status: state.toLowerCase(),
       qrcode,
-      instanceName: config.evolution_instance_name,
+      instanceName: evoInstanceName,
     });
   } catch (err) {
     console.error('[evolution-api GET] Error:', err);

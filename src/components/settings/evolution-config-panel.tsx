@@ -77,14 +77,14 @@ export function EvolutionConfigPanel({
       setStatus(data.status || (data.connected ? 'open' : 'connecting'));
       if (data.qrcode) {
         setQrCode(data.qrcode);
-        toast.success('Instance created! Please scan the QR code with WhatsApp');
+        toast.success('Instance created! Please scan the QR code below with WhatsApp');
       } else if (data.connected) {
         toast.success('Evolution API instance connected successfully!');
+        onConfigSaved();
       } else {
         toast.success('Evolution API configuration saved!');
+        onConfigSaved();
       }
-
-      onConfigSaved();
     } catch (err) {
       toast.error('Network error connecting to Evolution API server');
       console.error(err);
