@@ -45,17 +45,6 @@ export async function createEvolutionInstance(
       integration: 'WHATSAPP-BAILEYS',
     };
 
-    if (webhookUrl) {
-      payload.webhook = webhookUrl;
-      payload.webhook_by_events = true;
-      payload.events = [
-        'MESSAGES_UPSERT',
-        'MESSAGES_UPDATE',
-        'CONNECTION_UPDATE',
-        'QRCODE_UPDATED',
-      ];
-    }
-
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -67,9 +56,12 @@ export async function createEvolutionInstance(
 
     const data = await res.json();
     if (!res.ok) {
+      const errorDetail = Array.isArray(data?.message)
+        ? data.message.join(', ')
+        : (typeof data?.message === 'string' ? data.message : data?.error) || `HTTP ${res.status}: Failed to create Evolution instance`;
       return {
         success: false,
-        error: data?.error || data?.message || `HTTP ${res.status}: Failed to create Evolution instance`,
+        error: errorDetail,
       };
     }
 

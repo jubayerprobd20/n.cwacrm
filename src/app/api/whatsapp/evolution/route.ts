@@ -11,6 +11,7 @@ import {
   getEvolutionConnectionState,
   getEvolutionQrCode,
   logoutEvolutionInstance,
+  setEvolutionWebhook,
 } from '@/lib/whatsapp/evolution-client';
 import { getEvolutionApiUrl, getEvolutionApiKey } from '@/lib/supabase/env-utils';
 
@@ -140,10 +141,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const cleanInstanceName = (instanceName || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9_-]/g, '') || 'wacrm-instance';
+
     const evoConfig = {
       baseUrl,
       apiKey,
-      instanceName,
+      instanceName: cleanInstanceName,
     };
 
     if (action === 'logout') {
@@ -168,6 +175,11 @@ export async function POST(request: Request) {
     const createRes = await createEvolutionInstance(evoConfig, webhookUrl);
     let qrcode = createRes.qrcode;
     let state = 'connecting';
+
+    // Register webhook asynchronously in background (compatible with Evolution API v1 & v2)
+    setEvolutionWebhook(evoConfig, webhookUrl).catch((err) => {
+      console.warn('[evolution-api POST] Background webhook registration warning:', err);
+    });
 
     if (!createRes.success && createRes.error?.toLowerCase().includes('already exists')) {
       // Instance already exists, check its state
@@ -199,7 +211,7 @@ export async function POST(request: Request) {
       provider: 'evolution',
       evolution_base_url: baseUrl,
       evolution_api_key: apiKey,
-      evolution_instance_name: instanceName,
+      evolution_instance_name: cleanInstanceName,
       evolution_instance_status: state.toLowerCase(),
       status: isConnected ? 'connected' : 'disconnected',
       updated_at: new Date().toISOString(),
@@ -223,7 +235,7 @@ export async function POST(request: Request) {
       connected: isConnected,
       status: state.toLowerCase(),
       qrcode,
-      instanceName,
+      instanceName: cleanInstanceName,
     });
   } catch (err) {
     console.error('[evolution-api POST] Error:', err);
