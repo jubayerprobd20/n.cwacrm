@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Clock, Save } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -64,12 +64,17 @@ export function BusinessHoursSettings() {
   );
   const [dailyHours, setDailyHours] = useState<Record<string, DailyHourConfig>>(DEFAULT_HOURS);
 
+  const loadedRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (authLoading) return;
     if (!user || !accountId) {
+      loadedRef.current = null;
       setLoading(false);
       return;
     }
+    if (loadedRef.current === accountId) return;
+    loadedRef.current = accountId;
     fetchBusinessHours();
   }, [authLoading, user, accountId]);
 

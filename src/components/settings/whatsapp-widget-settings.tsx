@@ -80,18 +80,23 @@ export function WhatsAppWidgetSettings() {
     return 'https://your-crm-domain.com';
   }, []);
 
+  const loadedRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!user || !accountId) {
+      loadedRef.current = null;
       setLoading(false);
       return;
     }
+    if (loadedRef.current === accountId) return;
+    loadedRef.current = accountId;
     fetchWidgetConfig();
-  }, [authLoading, user]);
+  }, [authLoading, user, accountId]);
 
-  async function fetchWidgetConfig() {
+  async function fetchWidgetConfig(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       if (!accountId) return;
 
       // Get Organization info for fallback/defaults

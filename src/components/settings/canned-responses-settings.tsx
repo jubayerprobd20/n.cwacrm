@@ -68,14 +68,19 @@ export function CannedResponsesSettings() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const loadedRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!user || !accountId) {
+      loadedRef.current = null;
       setLoading(false);
       return;
     }
+    if (loadedRef.current === accountId) return;
+    loadedRef.current = accountId;
     fetchCannedResponses();
-  }, [authLoading, user]);
+  }, [authLoading, user, accountId]);
 
   async function fetchCannedResponses() {
     try {
