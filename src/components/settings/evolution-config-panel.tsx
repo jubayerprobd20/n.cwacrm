@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   CheckCircle2,
@@ -14,12 +14,16 @@ import {
   LogOut,
   Copy,
   Check,
+  Zap,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 export interface EvolutionConfigPanelProps {
   initialBaseUrl: string;
@@ -46,6 +50,34 @@ export function EvolutionConfigPanel({
   const [loggingOut, setLoggingOut] = useState(false);
   const [qrCode, setQrCode] = useState<{ base64?: string; code?: string; pairingCode?: string } | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  const isConnected = status === 'open' || status === 'connected';
+
+  // AUTO-POLLING: While QR code is shown and not connected, check live connection status every 3 seconds!
+  useEffect(() => {
+    if (!qrCode || isConnected) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/whatsapp/evolution', { method: 'GET' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.connected || data.status === 'open' || data.status === 'connected') {
+            setStatus('open');
+            setQrCode(null);
+            toast.success('🎉 WhatsApp connected successfully! Ready to broadcast & receive messages.');
+            onConfigSaved();
+          } else if (data.qrcode) {
+            setQrCode(data.qrcode);
+          }
+        }
+      } catch {
+        // ignore temporary network errors during polling
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [qrCode, isConnected, onConfigSaved]);
 
   const handleConnect = async () => {
     if (!instanceName || (!useHostedServer && (!baseUrl || !apiKey))) {
@@ -102,10 +134,11 @@ export function EvolutionConfigPanel({
       if (data.qrcode) {
         setQrCode(data.qrcode);
         toast.success('QR Code updated');
-      } else if (data.connected) {
+      } else if (data.connected || data.status === 'open' || data.status === 'connected') {
         setStatus('open');
         setQrCode(null);
-        toast.success('WhatsApp instance is already connected!');
+        toast.success('🎉 WhatsApp instance is connected and live!');
+        onConfigSaved();
       } else {
         toast.error(data.message || 'Could not fetch QR code. Try clicking Save & Connect first.');
       }
@@ -160,44 +193,145 @@ export function EvolutionConfigPanel({
     }
   };
 
-  const isConnected = status === 'open' || status === 'connected';
-
   return (
     <div className="space-y-6">
-      {/* Status banner */}
-      <Alert className={`border ${isConnected ? 'bg-emerald-950/20 border-emerald-500/30' : 'bg-card border-border'}`}>
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-3">
-            {isConnected ? (
-              <CheckCircle2 className="size-5 text-emerald-400" />
-            ) : (
-              <XCircle className="size-5 text-amber-400" />
-            )}
-            <div>
-              <AlertTitle className="text-foreground font-semibold mb-0.5">
-                {isConnected ? 'Evolution API Instance Connected (Open)' : 'Evolution API Instance Disconnected'}
-              </AlertTitle>
-              <AlertDescription className="text-muted-foreground text-xs">
-                {isConnected
-                  ? 'Your self-hosted Baileys server is connected. Outbound and inbound messages will bypass 24h template limits.'
-                  : 'Enter your Evolution API credentials below and click Save & Connect to generate a QR code.'}
-              </AlertDescription>
+      {/* 🟢 CONNECTED WHATSAPP CARD (Prominent display when account is connected) */}
+      {isConnected ? (
+        <Card className="border-2 border-emerald-500 bg-gradient-to-r from-emerald-950/40 via-slate-900/90 to-emerald-950/20 shadow-lg shadow-emerald-500/10">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-extrabold shadow-sm">
+                  <CheckCircle2 className="size-6 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider">
+                      ● Live &amp; Connected
+                    </Badge>
+                    <Badge variant="outline" className="text-xs text-slate-300 border-white/20">
+                      Evolution API
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl font-bold text-white mt-1">
+                    WhatsApp Business Session Active
+                  </CardTitle>
+                  <p className="text-xs text-slate-300">
+                    Instance: <strong className="text-emerald-300">{instanceName}</strong> • Outbound campaigns, auto-replies, and live inbox are 100% operational.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFetchQr}
+                  disabled={fetchingQr}
+                  className="border-emerald-500/40 bg-emerald-950/50 hover:bg-emerald-900/50 text-emerald-300 font-semibold"
+                >
+                  {fetchingQr ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <RefreshCw className="size-4 mr-1.5" />}
+                  Test Status
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="border-red-500/40 bg-red-950/30 text-red-400 hover:bg-red-500/20 font-semibold"
+                >
+                  {loggingOut ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <LogOut className="size-4 mr-1.5" />}
+                  Disconnect
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+      ) : (
+        /* 🔴 DISCONNECTED ALERT */
+        <Alert className="border border-amber-500/40 bg-amber-500/10 text-amber-200">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="size-5 text-amber-400 shrink-0" />
+              <div>
+                <AlertTitle className="text-amber-200 font-bold mb-0.5">
+                  WhatsApp Instance Disconnected — Messages Cannot Be Sent
+                </AlertTitle>
+                <AlertDescription className="text-amber-300/80 text-xs">
+                  Click <strong>&quot;Generate QR Code &amp; Connect&quot;</strong> below and scan with your WhatsApp app. Our system auto-detects when you scan and connects instantly.
+                </AlertDescription>
+              </div>
             </div>
           </div>
-          {isConnected && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-            >
-              {loggingOut ? <Loader2 className="size-4 animate-spin mr-1" /> : <LogOut className="size-4 mr-1" />}
-              Disconnect
-            </Button>
-          )}
-        </div>
-      </Alert>
+        </Alert>
+      )}
+
+      {/* QR Code Scanner Display (Shown below banner when generated) */}
+      {qrCode && !isConnected && (
+        <Card className="border-2 border-emerald-500/60 bg-gradient-to-b from-slate-950/95 to-slate-900/90 backdrop-blur-2xl shadow-[0_0_50px_rgba(16,185,129,0.25)] animate-in fade-in-50 slide-in-from-top-4 duration-300">
+          <CardHeader className="text-center pb-3">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 animate-pulse text-xs">
+                ● Listening for WhatsApp Scan...
+              </Badge>
+            </div>
+            <CardTitle className="text-xl font-bold text-white flex items-center justify-center gap-2">
+              <QrCode className="size-6 text-emerald-400" />
+              Scan QR Code with WhatsApp
+            </CardTitle>
+            <CardDescription className="text-slate-300 text-sm max-w-md mx-auto">
+              Follow these simple steps on your phone to link your WhatsApp Business account:
+            </CardDescription>
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs text-slate-300">
+              <span className="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/10 font-medium">1. Open WhatsApp</span>
+              <span className="text-slate-500">&rarr;</span>
+              <span className="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/10 font-medium">2. Tap Settings/Menu</span>
+              <span className="text-slate-500">&rarr;</span>
+              <span className="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/10 font-medium">3. Linked Devices</span>
+              <span className="text-slate-500">&rarr;</span>
+              <span className="px-2.5 py-1 bg-emerald-950/80 text-emerald-300 rounded-lg border border-emerald-500/30 font-medium">4. Link a Device &amp; Scan</span>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center space-y-5 pb-6">
+            {qrCode.base64 ? (
+              <div className="p-5 bg-white rounded-3xl shadow-2xl border-4 border-emerald-500/40 flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrCode.base64} alt="Evolution QR Code" className="size-64 object-contain" />
+              </div>
+            ) : null}
+
+            {pairingCodeValue ? (
+              <div className="w-full max-w-sm space-y-1.5 text-center">
+                <Label className="text-xs text-slate-400 font-medium">Or use WhatsApp Pairing Code:</Label>
+                <div className="flex items-center gap-2 bg-slate-800/80 px-4 py-2.5 rounded-xl border border-white/10">
+                  <span className="font-mono text-lg font-bold text-emerald-400 tracking-wider flex-1">
+                    {pairingCodeValue}
+                  </span>
+                  <Button variant="ghost" size="icon" onClick={copyPairingCode} className="size-8">
+                    {copiedCode ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4 text-slate-400" />}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <p className="text-xs text-emerald-300/90 text-center max-w-sm font-medium">
+              ⚡ Auto-detecting scan... Keep this page open while you scan on your phone.
+            </p>
+
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFetchQr}
+                disabled={fetchingQr}
+                className="border-white/10 bg-slate-800 hover:bg-slate-700 text-white"
+              >
+                {fetchingQr ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <RefreshCw className="size-4 mr-1.5" />}
+                Refresh QR Code
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Evolution API Form */}
       <Card>
@@ -205,11 +339,11 @@ export function EvolutionConfigPanel({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-foreground flex items-center gap-2">
-                <Server className="size-5 text-emerald-400" />
-                Evolution API Connection
+                <Server className="size-5 text-emerald-500" />
+                Evolution API Configuration
               </CardTitle>
               <CardDescription className="text-muted-foreground">
-                Connect your WhatsApp instance using Hosted (Instant) or Custom Evolution API
+                Manage your WhatsApp instance connection settings
               </CardDescription>
             </div>
 
@@ -245,7 +379,7 @@ export function EvolutionConfigPanel({
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-slate-300 space-y-1">
               <p className="font-semibold text-emerald-400">⚡ Instant Server Configuration Enabled</p>
               <p className="text-slate-400">
-                Your server URL and API Key are automatically provided by the system environment. Simply choose a name for your WhatsApp instance below and click <strong>Generate QR Code</strong>.
+                Your server URL and API Key are automatically provided by the system environment. Simply choose a name for your WhatsApp instance below and click <strong>Generate QR Code &amp; Connect</strong>.
               </p>
             </div>
           ) : null}
@@ -316,10 +450,8 @@ export function EvolutionConfigPanel({
                   <Loader2 className="size-4 animate-spin mr-2" />
                   Connecting Instance...
                 </>
-              ) : useHostedServer ? (
-                <>Generate QR Code &amp; Connect</>
               ) : (
-                <>Save &amp; Connect Instance</>
+                <>⚡ {isConnected ? 'Re-generate QR Code' : 'Generate QR Code & Connect'}</>
               )}
             </Button>
 
@@ -334,75 +466,12 @@ export function EvolutionConfigPanel({
                   Checking...
                 </>
               ) : (
-                <>Check Live QR Code</>
+                <>Check Live Status</>
               )}
             </Button>
           </div>
         </CardContent>
       </Card>
-
-      {/* QR Code Scanner Display (Shown below form when generated) */}
-      {qrCode && !isConnected && (
-        <Card className="border-2 border-emerald-500/40 bg-gradient-to-b from-slate-950/95 to-slate-900/90 backdrop-blur-2xl shadow-[0_0_40px_rgba(16,185,129,0.15)] animate-in fade-in-50 slide-in-from-top-4 duration-300">
-          <CardHeader className="text-center pb-3">
-            <CardTitle className="text-xl font-bold text-white flex items-center justify-center gap-2">
-              <QrCode className="size-6 text-emerald-400" />
-              Scan QR Code with WhatsApp
-            </CardTitle>
-            <CardDescription className="text-slate-300 text-sm max-w-md mx-auto">
-              Follow these simple steps on your phone to link your WhatsApp Business account:
-            </CardDescription>
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs text-slate-300">
-              <span className="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/10 font-medium">1. Open WhatsApp</span>
-              <span className="text-slate-500">&rarr;</span>
-              <span className="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/10 font-medium">2. Tap Settings/Menu</span>
-              <span className="text-slate-500">&rarr;</span>
-              <span className="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/10 font-medium">3. Linked Devices</span>
-              <span className="text-slate-500">&rarr;</span>
-              <span className="px-2.5 py-1 bg-emerald-950/80 text-emerald-300 rounded-lg border border-emerald-500/30 font-medium">4. Link a Device &amp; Scan</span>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center space-y-5 pb-6">
-            {qrCode.base64 ? (
-              <div className="p-5 bg-white rounded-3xl shadow-2xl border-4 border-emerald-500/30 flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrCode.base64} alt="Evolution QR Code" className="size-64 object-contain" />
-              </div>
-            ) : null}
-
-            {pairingCodeValue ? (
-              <div className="w-full max-w-sm space-y-1.5 text-center">
-                <Label className="text-xs text-slate-400 font-medium">Or use WhatsApp Pairing Code:</Label>
-                <div className="flex items-center gap-2 bg-slate-800/80 px-4 py-2.5 rounded-xl border border-white/10">
-                  <span className="font-mono text-lg font-bold text-emerald-400 tracking-wider flex-1">
-                    {pairingCodeValue}
-                  </span>
-                  <Button variant="ghost" size="icon" onClick={copyPairingCode} className="size-8">
-                    {copiedCode ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4 text-slate-400" />}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
-            <p className="text-xs text-slate-400 text-center max-w-sm">
-              Point your phone camera at this QR code. Once scanned, WhatsApp will connect instantly and update this page.
-            </p>
-
-            <div className="flex items-center gap-3 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleFetchQr}
-                disabled={fetchingQr}
-                className="border-white/10 bg-slate-800 hover:bg-slate-700 text-white"
-              >
-                {fetchingQr ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <RefreshCw className="size-4 mr-1.5" />}
-                Refresh QR Code
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
