@@ -53,6 +53,7 @@ export function EvolutionConfigPanel({
   const [connecting, setConnecting] = useState(false);
   const [fetchingQr, setFetchingQr] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [registeringWebhook, setRegisteringWebhook] = useState(false);
   const [qrCode, setQrCode] = useState<{ base64?: string; code?: string; pairingCode?: string } | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -185,6 +186,33 @@ export function EvolutionConfigPanel({
       console.error(err);
     } finally {
       setFetchingQr(false);
+    }
+  };
+
+  const handleRegisterWebhook = async () => {
+    setRegisteringWebhook(true);
+    try {
+      const res = await fetch('/api/whatsapp/evolution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set-webhook',
+          baseUrl: useHostedServer ? '' : baseUrl.trim(),
+          apiKey: useHostedServer ? '' : apiKey.trim(),
+          instanceName: instanceName.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Webhook registered to: ${data.webhookUrl}`);
+      } else {
+        toast.error(data.error || 'Failed to register webhook');
+      }
+    } catch (err) {
+      toast.error('Network error registering webhook');
+      console.error(err);
+    } finally {
+      setRegisteringWebhook(false);
     }
   };
 
@@ -505,6 +533,22 @@ export function EvolutionConfigPanel({
                 </>
               ) : (
                 <>Check Live Status</>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleRegisterWebhook}
+              disabled={registeringWebhook || !instanceName || (!useHostedServer && (!baseUrl || !apiKey))}
+              className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+            >
+              {registeringWebhook ? (
+                <>
+                  <Loader2 className="size-4 animate-spin mr-2" />
+                  Registering...
+                </>
+              ) : (
+                <>🔗 Re-register Webhook</>
               )}
             </Button>
           </div>

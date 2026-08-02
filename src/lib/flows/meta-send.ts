@@ -7,6 +7,9 @@ import {
   type InteractiveListSection,
   type MediaKind,
 } from '@/lib/whatsapp/meta-api'
+import { sendEvolutionText, sendEvolutionMedia } from '@/lib/whatsapp/evolution-client'
+import { sendWASenderText, sendWASenderMedia } from '@/lib/whatsapp/wasender-client'
+import { getEvolutionApiUrl, getEvolutionApiKey } from '@/lib/supabase/env-utils'
 import type { InteractiveMessagePayload } from '@/lib/whatsapp/interactive'
 import { decrypt } from '@/lib/whatsapp/encryption'
 import {
@@ -95,6 +98,33 @@ export async function engineSendText(
   const accessToken = decrypt(config.access_token)
 
   const attempt = async (phone: string): Promise<string> => {
+    if (config.provider === 'evolution') {
+      const evoBaseUrl = getEvolutionApiUrl(config.evolution_base_url)
+      const evoApiKey = getEvolutionApiKey(config.evolution_api_key)
+      const evoInstanceName = (config.evolution_instance_name || '').trim()
+      if (!evoBaseUrl || !evoApiKey || !evoInstanceName) {
+        throw new Error('Evolution API is not fully configured')
+      }
+      const evoConfig = { baseUrl: evoBaseUrl, apiKey: evoApiKey, instanceName: evoInstanceName }
+      const res = await sendEvolutionText(evoConfig, phone, args.text)
+      if (!res.success) throw new Error(res.error || 'Evolution API send failed')
+      return res.messageId || `evo-${Date.now()}`
+    }
+
+    if (config.provider === 'wasender') {
+      if (!config.wasender_base_url || !config.wasender_api_key) {
+        throw new Error('WASender API is not fully configured')
+      }
+      const waConfig = {
+        baseUrl: config.wasender_base_url,
+        apiKey: config.wasender_api_key,
+        deviceId: config.wasender_device_id,
+      }
+      const res = await sendWASenderText(waConfig, phone, args.text)
+      if (!res.success) throw new Error(res.error || 'WASender send failed')
+      return res.messageId || `wasender-${Date.now()}`
+    }
+
     const r = await sendTextMessage({
       phoneNumberId: config.phone_number_id,
       accessToken,
@@ -207,6 +237,46 @@ export async function engineSendMedia(
   const accessToken = decrypt(config2.access_token)
 
   const attempt = async (phone: string): Promise<string> => {
+    if (config2.provider === 'evolution') {
+      const evoBaseUrl = getEvolutionApiUrl(config2.evolution_base_url)
+      const evoApiKey = getEvolutionApiKey(config2.evolution_api_key)
+      const evoInstanceName = (config2.evolution_instance_name || '').trim()
+      if (!evoBaseUrl || !evoApiKey || !evoInstanceName) {
+        throw new Error('Evolution API is not fully configured')
+      }
+      const evoConfig = { baseUrl: evoBaseUrl, apiKey: evoApiKey, instanceName: evoInstanceName }
+      const res = await sendEvolutionMedia(
+        evoConfig,
+        phone,
+        args.link,
+        args.kind,
+        args.caption,
+        args.filename
+      )
+      if (!res.success) throw new Error(res.error || 'Evolution API media send failed')
+      return res.messageId || `evo-${Date.now()}`
+    }
+
+    if (config2.provider === 'wasender') {
+      if (!config2.wasender_base_url || !config2.wasender_api_key) {
+        throw new Error('WASender API is not fully configured')
+      }
+      const waConfig = {
+        baseUrl: config2.wasender_base_url,
+        apiKey: config2.wasender_api_key,
+        deviceId: config2.wasender_device_id,
+      }
+      const res = await sendWASenderMedia(
+        waConfig,
+        phone,
+        args.link,
+        args.kind,
+        args.caption
+      )
+      if (!res.success) throw new Error(res.error || 'WASender media send failed')
+      return res.messageId || `wasender-${Date.now()}`
+    }
+
     const r = await sendMediaMessage({
       phoneNumberId: config2.phone_number_id,
       accessToken,
@@ -361,6 +431,50 @@ async function sendInteractiveViaMeta(
   const accessToken = decrypt(config3.access_token)
 
   const attempt = async (phone: string): Promise<string> => {
+    let textToSend = input.bodyText || ''
+    if (input.kind === 'buttons' && input.buttons) {
+      const btnTexts = input.buttons
+        .map((b, idx) => `${idx + 1}. ${b.title || 'Option'}`)
+        .join('\n')
+      textToSend = `${textToSend}\n\n${btnTexts}`
+    } else if (input.kind === 'list' && input.sections) {
+      const secTexts = input.sections
+        .map(
+          (sec) =>
+            `${sec.title || 'Options'}:\n` +
+            sec.rows.map((r, idx) => `${idx + 1}. ${r.title}`).join('\n')
+        )
+        .join('\n\n')
+      textToSend = `${textToSend}\n\n${secTexts}`
+    }
+
+    if (config3.provider === 'evolution') {
+      const evoBaseUrl = getEvolutionApiUrl(config3.evolution_base_url)
+      const evoApiKey = getEvolutionApiKey(config3.evolution_api_key)
+      const evoInstanceName = (config3.evolution_instance_name || '').trim()
+      if (!evoBaseUrl || !evoApiKey || !evoInstanceName) {
+        throw new Error('Evolution API is not fully configured')
+      }
+      const evoConfig = { baseUrl: evoBaseUrl, apiKey: evoApiKey, instanceName: evoInstanceName }
+      const res = await sendEvolutionText(evoConfig, phone, textToSend)
+      if (!res.success) throw new Error(res.error || 'Evolution API send failed')
+      return res.messageId || `evo-${Date.now()}`
+    }
+
+    if (config3.provider === 'wasender') {
+      if (!config3.wasender_base_url || !config3.wasender_api_key) {
+        throw new Error('WASender API is not fully configured')
+      }
+      const waConfig = {
+        baseUrl: config3.wasender_base_url,
+        apiKey: config3.wasender_api_key,
+        deviceId: config3.wasender_device_id,
+      }
+      const res = await sendWASenderText(waConfig, phone, textToSend)
+      if (!res.success) throw new Error(res.error || 'WASender send failed')
+      return res.messageId || `wasender-${Date.now()}`
+    }
+
     if (input.kind === 'buttons') {
       const r = await sendInteractiveButtons({
         phoneNumberId: config3.phone_number_id,

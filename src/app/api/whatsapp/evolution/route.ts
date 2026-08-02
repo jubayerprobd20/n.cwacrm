@@ -193,21 +193,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, status: 'disconnected' });
     }
 
-    // Construct live webhook URL using request host header
+    // Construct live webhook URL using request host header (prioritize host in production over placeholder env)
     const host = request.headers.get('host') || 'wacrm.nextcorebd.com';
     const protocol = host.includes('localhost') ? 'http' : 'https';
-    const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
-    const webhookUrl = `${publicAppUrl.replace(/\/+$/, '')}/api/whatsapp/evolution-webhook`;
+    let baseAppUrl = `${protocol}://${host}`;
+    if (
+      process.env.NEXT_PUBLIC_APP_URL &&
+      !process.env.NEXT_PUBLIC_APP_URL.includes('your-project') &&
+      !host.includes('localhost')
+    ) {
+      baseAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    }
+    const webhookUrl = `${baseAppUrl.replace(/\/+$/, '')}/api/whatsapp/evolution-webhook`;
+
+    if (action === 'set-webhook' || action === 'register-webhook' || action === 're-register-webhook') {
+      const webhookRes = await setEvolutionWebhook(evoConfig, webhookUrl);
+      return NextResponse.json({
+        success: webhookRes.success,
+        webhookUrl,
+        error: webhookRes.error,
+      });
+    }
 
     // Try creating instance first
     const createRes = await createEvolutionInstance(evoConfig, webhookUrl);
     let qrcode = createRes.qrcode;
     let state = 'connecting';
-
-    // Register webhook asynchronously in background (compatible with Evolution API v1 & v2)
-    setEvolutionWebhook(evoConfig, webhookUrl).catch((err) => {
-      console.warn('[evolution-api POST] Background webhook registration warning:', err);
-    });
 
     if (!createRes.success && createRes.error?.toLowerCase().includes('already exists')) {
       // Instance already exists, check its state
@@ -225,6 +236,11 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    // Always ensure webhook is registered (works even if instance already existed!)
+    await setEvolutionWebhook(evoConfig, webhookUrl).catch((err) => {
+      console.warn('[evolution-api POST] Background webhook registration warning:', err);
+    });
 
     const isConnected = state.toLowerCase() === 'open';
 

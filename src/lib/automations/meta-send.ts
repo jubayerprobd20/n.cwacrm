@@ -11,6 +11,9 @@ import {
   phoneVariants,
   isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils'
+import { sendEvolutionText } from '@/lib/whatsapp/evolution-client'
+import { sendWASenderText } from '@/lib/whatsapp/wasender-client'
+import { getEvolutionApiUrl, getEvolutionApiKey } from '@/lib/supabase/env-utils'
 import { supabaseAdmin } from './admin-client'
 
 // ------------------------------------------------------------
@@ -144,6 +147,53 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
   const accessToken = decrypt(config.access_token)
 
   const attempt = async (phone: string): Promise<string> => {
+    if (config.provider === 'evolution') {
+      const evoBaseUrl = getEvolutionApiUrl(config.evolution_base_url)
+      const evoApiKey = getEvolutionApiKey(config.evolution_api_key)
+      const evoInstanceName = (config.evolution_instance_name || '').trim()
+      if (!evoBaseUrl || !evoApiKey || !evoInstanceName) {
+        throw new Error('Evolution API is not fully configured')
+      }
+      const evoConfig = { baseUrl: evoBaseUrl, apiKey: evoApiKey, instanceName: evoInstanceName }
+      let textToSend = input.kind === 'text' ? input.text : ''
+      if (input.kind === 'template') {
+        const { data: tmpl } = await db
+          .from('message_templates')
+          .select('body_text')
+          .eq('account_id', input.accountId)
+          .eq('name', input.templateName)
+          .maybeSingle()
+        textToSend = tmpl?.body_text || `Template: ${input.templateName}`
+      }
+      const res = await sendEvolutionText(evoConfig, phone, textToSend)
+      if (!res.success) throw new Error(res.error || 'Evolution API send failed')
+      return res.messageId || `evo-${Date.now()}`
+    }
+
+    if (config.provider === 'wasender') {
+      if (!config.wasender_base_url || !config.wasender_api_key) {
+        throw new Error('WASender API is not fully configured')
+      }
+      const waConfig = {
+        baseUrl: config.wasender_base_url,
+        apiKey: config.wasender_api_key,
+        deviceId: config.wasender_device_id,
+      }
+      let textToSend = input.kind === 'text' ? input.text : ''
+      if (input.kind === 'template') {
+        const { data: tmpl } = await db
+          .from('message_templates')
+          .select('body_text')
+          .eq('account_id', input.accountId)
+          .eq('name', input.templateName)
+          .maybeSingle()
+        textToSend = tmpl?.body_text || `Template: ${input.templateName}`
+      }
+      const res = await sendWASenderText(waConfig, phone, textToSend)
+      if (!res.success) throw new Error(res.error || 'WASender send failed')
+      return res.messageId || `wasender-${Date.now()}`
+    }
+
     if (input.kind === 'template') {
       const r = await sendTemplateMessage({
         phoneNumberId: config.phone_number_id,

@@ -19,6 +19,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-api';
+import { sendEvolutionText } from '@/lib/whatsapp/evolution-client';
+import { sendWASenderText } from '@/lib/whatsapp/wasender-client';
+import { getEvolutionApiUrl, getEvolutionApiKey } from '@/lib/supabase/env-utils';
 import { decrypt } from '@/lib/whatsapp/encryption';
 import {
   sanitizePhoneForMeta,
@@ -68,6 +71,9 @@ export interface BroadcastPlan {
   templateLanguage: string;
   phoneNumberId: string;
   accessToken: string;
+  provider?: string;
+  evoConfig?: { baseUrl: string; apiKey: string; instanceName: string };
+  waConfig?: { baseUrl: string; apiKey: string; deviceId?: string };
   templateRow: MessageTemplate | null;
   planned: PlannedRecipient[];
   /** Phones rejected up front (invalid E.164) — counted as failed. */
@@ -235,12 +241,29 @@ export async function createBroadcast(
     return { recipientRowId: row.id as string, phone: r.phone, params: r.params };
   });
 
+  const evoBaseUrl = getEvolutionApiUrl(config.evolution_base_url);
+  const evoApiKey = getEvolutionApiKey(config.evolution_api_key);
+  const evoInstanceName = (config.evolution_instance_name || '').trim();
+
   return {
     broadcastId: broadcast.id,
     templateName,
     templateLanguage,
-    phoneNumberId: config.phone_number_id,
+    phoneNumberId: config.phone_number_id || '',
     accessToken,
+    provider: config.provider || 'meta',
+    evoConfig:
+      config.provider === 'evolution' && evoBaseUrl && evoApiKey && evoInstanceName
+        ? { baseUrl: evoBaseUrl, apiKey: evoApiKey, instanceName: evoInstanceName }
+        : undefined,
+    waConfig:
+      config.provider === 'wasender' && config.wasender_base_url && config.wasender_api_key
+        ? {
+            baseUrl: config.wasender_base_url,
+            apiKey: config.wasender_api_key,
+            deviceId: config.wasender_device_id,
+          }
+        : undefined,
     templateRow,
     planned,
     rejected,
@@ -273,6 +296,24 @@ export async function deliverBroadcast(
 
     for (const variant of variants) {
       try {
+        if (plan.provider === 'evolution' && plan.evoConfig) {
+          const bodyText = plan.templateRow?.body_text || `Template: ${plan.templateName}`;
+          const res = await sendEvolutionText(plan.evoConfig, variant, bodyText);
+          if (!res.success) throw new Error(res.error || 'Evolution API send failed');
+          sentMessageId = res.messageId || `evo-${Date.now()}`;
+          lastError = null;
+          break;
+        }
+
+        if (plan.provider === 'wasender' && plan.waConfig) {
+          const bodyText = plan.templateRow?.body_text || `Template: ${plan.templateName}`;
+          const res = await sendWASenderText(plan.waConfig, variant, bodyText);
+          if (!res.success) throw new Error(res.error || 'WASender send failed');
+          sentMessageId = res.messageId || `wasender-${Date.now()}`;
+          lastError = null;
+          break;
+        }
+
         const result = await sendTemplateMessage({
           phoneNumberId: plan.phoneNumberId,
           accessToken: plan.accessToken,
