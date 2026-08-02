@@ -29,6 +29,8 @@ import {
   sendInteractiveList,
   type MediaKind,
 } from '@/lib/whatsapp/meta-api';
+import { sendEvolutionText, sendEvolutionMedia } from '@/lib/whatsapp/evolution-client';
+import { sendWASenderText, sendWASenderMedia } from '@/lib/whatsapp/wasender-client';
 import {
   validateInteractivePayload,
   interactivePayloadPreviewText,
@@ -262,10 +264,10 @@ export async function sendMessageToConversation(
     );
   }
 
-  const accessToken = decrypt(config.access_token);
+  const accessToken = config.access_token ? decrypt(config.access_token) : '';
 
   // Self-heal legacy CBC ciphertexts. Fire-and-forget; idempotent.
-  if (isLegacyFormat(config.access_token)) {
+  if (config.access_token && isLegacyFormat(config.access_token)) {
     void db
       .from('whatsapp_config')
       .update({ access_token: encrypt(accessToken) })
@@ -330,6 +332,107 @@ export async function sendMessageToConversation(
   }
 
   const attempt = async (phone: string): Promise<string> => {
+    // 1. Evolution API Provider
+    if (config.provider === 'evolution') {
+      if (!config.evolution_base_url || !config.evolution_api_key || !config.evolution_instance_name) {
+        throw new SendMessageError('evolution_not_configured', 'Evolution API is not fully configured.', 400);
+      }
+      const evoConfig = {
+        baseUrl: config.evolution_base_url,
+        apiKey: config.evolution_api_key,
+        instanceName: config.evolution_instance_name,
+      };
+      if (isMediaKind) {
+        const res = await sendEvolutionMedia(
+          evoConfig,
+          phone,
+          mediaUrl!,
+          messageType as MediaKind,
+          contentText || undefined,
+          filename || undefined
+        );
+        if (!res.success) throw new Error(res.error || 'Evolution API media send failed');
+        return res.messageId!;
+      }
+      let textToSend = contentText || '';
+      if (messageType === 'template' && templateRow) {
+        textToSend = templateRow.body_text || contentText || `Template: ${templateName}`;
+      } else if (messageType === 'interactive' && interactivePayload) {
+        textToSend = interactivePayload.body || '';
+        if ('buttons' in interactivePayload && interactivePayload.buttons) {
+          const btnTexts = interactivePayload.buttons
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((b: any, idx: number) => `${idx + 1}. ${b.reply?.title || b.title || 'Option'}`)
+            .join('\n');
+          textToSend = `${textToSend}\n\n${btnTexts}`;
+        } else if ('sections' in interactivePayload && interactivePayload.sections) {
+          const secTexts = interactivePayload.sections
+            .map(
+              (sec: { title?: string; rows: { title: string }[] }) =>
+                `${sec.title || 'Options'}:\n` +
+                sec.rows.map((r: { title: string }, idx: number) => `${idx + 1}. ${r.title}`).join('\n')
+            )
+            .join('\n\n');
+          textToSend = `${textToSend}\n\n${secTexts}`;
+        }
+      }
+      const res = await sendEvolutionText(evoConfig, phone, textToSend);
+      if (!res.success) throw new Error(res.error || 'Evolution API text send failed');
+      return res.messageId!;
+    }
+
+    // 2. WASender API Provider
+    if (config.provider === 'wasender') {
+      if (!config.wasender_base_url || !config.wasender_api_key) {
+        throw new SendMessageError('wasender_not_configured', 'WASender API is not fully configured.', 400);
+      }
+      const waConfig = {
+        baseUrl: config.wasender_base_url,
+        apiKey: config.wasender_api_key,
+        deviceId: config.wasender_device_id,
+      };
+      if (isMediaKind) {
+        const res = await sendWASenderMedia(
+          waConfig,
+          phone,
+          mediaUrl!,
+          messageType as MediaKind,
+          contentText || undefined
+        );
+        if (!res.success) throw new Error(res.error || 'WASender media send failed');
+        return res.messageId!;
+      }
+      let textToSend = contentText || '';
+      if (messageType === 'template' && templateRow) {
+        textToSend = templateRow.body_text || contentText || `Template: ${templateName}`;
+      } else if (messageType === 'interactive' && interactivePayload) {
+        textToSend = interactivePayload.body || '';
+        if ('buttons' in interactivePayload && interactivePayload.buttons) {
+          const btnTexts = interactivePayload.buttons
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((b: any, idx: number) => `${idx + 1}. ${b.reply?.title || b.title || 'Option'}`)
+            .join('\n');
+          textToSend = `${textToSend}\n\n${btnTexts}`;
+        } else if ('sections' in interactivePayload && interactivePayload.sections) {
+          const secTexts = interactivePayload.sections
+            .map(
+              (sec: { title?: string; rows: { title: string }[] }) =>
+                `${sec.title || 'Options'}:\n` +
+                sec.rows.map((r: { title: string }, idx: number) => `${idx + 1}. ${r.title}`).join('\n')
+            )
+            .join('\n\n');
+          textToSend = `${textToSend}\n\n${secTexts}`;
+        }
+      }
+      const res = await sendWASenderText(waConfig, phone, textToSend);
+      if (!res.success) throw new Error(res.error || 'WASender text send failed');
+      return res.messageId!;
+    }
+
+    // 3. Meta Cloud API (Default)
+    if (!config.phone_number_id || !accessToken) {
+      throw new SendMessageError('meta_not_configured', 'Meta API is not fully configured.', 400);
+    }
     if (messageType === 'template') {
       const result = await sendTemplateMessage({
         phoneNumberId: config.phone_number_id,

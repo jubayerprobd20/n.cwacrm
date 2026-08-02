@@ -31,6 +31,8 @@ import {
 } from '@/components/ui/accordion';
 import type { WhatsAppConfig as WhatsAppConfigType } from '@/types';
 import { WhatsAppConnectButton } from './whatsapp-connect-button';
+import { EvolutionConfigPanel } from './evolution-config-panel';
+import { WASenderConfigPanel } from './wasender-config-panel';
 
 const MASKED_TOKEN = '••••••••••••••••';
 
@@ -97,6 +99,7 @@ export function WhatsAppConfig() {
   const [verifyToken, setVerifyToken] = useState('');
   const [pin, setPin] = useState('');
   const [tokenEdited, setTokenEdited] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<'meta' | 'evolution' | 'wasender'>('meta');
 
   // True once /register has succeeded on Meta's side (timestamp set
   // in the row). When false, the saved config is metadata-only and
@@ -119,7 +122,13 @@ export function WhatsAppConfig() {
 
   const webhookUrl =
     typeof window !== 'undefined'
-      ? `${window.location.origin}/api/whatsapp/webhook`
+      ? `${window.location.origin}/api/whatsapp/${
+          selectedProvider === 'evolution'
+            ? 'evolution-webhook'
+            : selectedProvider === 'wasender'
+            ? 'wasender-webhook'
+            : 'webhook'
+        }`
       : '';
 
   const fetchConfig = useCallback(async (acctId: string) => {
@@ -149,6 +158,7 @@ export function WhatsAppConfig() {
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
+        setSelectedProvider(data.provider || 'meta');
       } else {
         setConfig(null);
         setPhoneNumberId('');
@@ -157,6 +167,7 @@ export function WhatsAppConfig() {
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
+        setSelectedProvider('meta');
       }
       // Clear any stale probe result when reloading the row.
       setRegistrationProbe(null);
@@ -462,8 +473,98 @@ export function WhatsAppConfig() {
           </Alert>
         )}
 
-        {/* Connection Status */}
-        <Alert className="bg-card border-border">
+        {/* WhatsApp Connection Method Selector */}
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold text-foreground">
+            WhatsApp Connection Method
+          </Label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => setSelectedProvider('meta')}
+              className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
+                selectedProvider === 'meta'
+                  ? 'border-primary bg-primary/10 shadow-lg shadow-primary/5'
+                  : 'border-border bg-card/60 hover:bg-card/80 text-muted-foreground'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <span className="font-semibold text-foreground">Meta Cloud API</span>
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  Official
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Official Meta WABA connection. Requires 24h template rules.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedProvider('evolution')}
+              className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
+                selectedProvider === 'evolution'
+                  ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/5'
+                  : 'border-border bg-card/60 hover:bg-card/80 text-muted-foreground'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <span className="font-semibold text-foreground">Evolution API</span>
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Self-Hosted
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Baileys open-source server. No 24h limit, free-form messages & QR code scanning.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedProvider('wasender')}
+              className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
+                selectedProvider === 'wasender'
+                  ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/5'
+                  : 'border-border bg-card/60 hover:bg-card/80 text-muted-foreground'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <span className="font-semibold text-foreground">WASender API</span>
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  Gateway
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Third-party SaaS session gateway. Send messages without Meta template restrictions.
+              </p>
+            </button>
+          </div>
+        </div>
+
+        {selectedProvider === 'evolution' ? (
+          <EvolutionConfigPanel
+            initialBaseUrl={config?.evolution_base_url || ''}
+            initialApiKey={config?.evolution_api_key || ''}
+            initialInstanceName={config?.evolution_instance_name || ''}
+            initialStatus={config?.evolution_instance_status || 'disconnected'}
+            onConfigSaved={() => {
+              if (accountId) fetchConfig(accountId);
+            }}
+          />
+        ) : selectedProvider === 'wasender' ? (
+          <WASenderConfigPanel
+            initialBaseUrl={config?.wasender_base_url || ''}
+            initialApiKey={config?.wasender_api_key || ''}
+            initialDeviceId={config?.wasender_device_id || ''}
+            initialStatus={config?.wasender_status || 'disconnected'}
+            onConfigSaved={() => {
+              if (accountId) fetchConfig(accountId);
+            }}
+          />
+        ) : (
+          <>
+            {/* Connection Status */}
+            <Alert className="bg-card border-border">
           <div className="flex items-center gap-2">
             {connectionStatus === 'connected' ? (
               <CheckCircle2 className="size-4 text-primary" />
@@ -837,6 +938,8 @@ export function WhatsAppConfig() {
                 </Button>
               )}
             </div>
+          </>
+        )}
           </>
         )}
 

@@ -245,12 +245,14 @@ export interface MessageReaction {
   created_at: string;
 }
 
+export type WhatsAppProviderType = 'meta' | 'evolution' | 'wasender';
+
 export interface WhatsAppConfig {
   id: string;
   user_id: string;
-  phone_number_id: string;
+  phone_number_id: string | null;
   waba_id?: string;
-  access_token: string;
+  access_token: string | null;
   verify_token?: string;
   status: 'connected' | 'disconnected';
   connected_at?: string;
@@ -264,6 +266,15 @@ export interface WhatsAppConfig {
   subscribed_apps_at?: string;
   /** Last error from /register; cleared on success. */
   last_registration_error?: string;
+  provider?: WhatsAppProviderType;
+  evolution_base_url?: string;
+  evolution_api_key?: string;
+  evolution_instance_name?: string;
+  evolution_instance_status?: string;
+  wasender_base_url?: string;
+  wasender_api_key?: string;
+  wasender_device_id?: string;
+  wasender_status?: string;
 }
 
 // Raw Meta status enum. We persist this verbatim from Meta (sync + webhook)

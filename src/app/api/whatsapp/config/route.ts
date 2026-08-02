@@ -87,7 +87,7 @@ export async function GET() {
 
     const { data: config, error: configError } = await supabase
       .from('whatsapp_config')
-      .select('phone_number_id, access_token, status')
+      .select('*')
       .eq('account_id', accountId)
       .maybeSingle()
 
@@ -100,6 +100,41 @@ export async function GET() {
     }
 
     if (!config) {
+      return NextResponse.json(
+        {
+          connected: false,
+          reason: 'no_config',
+          message: 'No WhatsApp configuration saved yet. Fill in the form and click Save Configuration.',
+        },
+        { status: 200 }
+      )
+    }
+
+    if (config.provider === 'evolution') {
+      return NextResponse.json({
+        connected: config.status === 'connected',
+        provider: 'evolution',
+        evolution_base_url: config.evolution_base_url,
+        evolution_api_key: config.evolution_api_key,
+        evolution_instance_name: config.evolution_instance_name,
+        evolution_instance_status: config.evolution_instance_status || 'disconnected',
+        status: config.status || 'disconnected',
+      })
+    }
+
+    if (config.provider === 'wasender') {
+      return NextResponse.json({
+        connected: config.status === 'connected',
+        provider: 'wasender',
+        wasender_base_url: config.wasender_base_url,
+        wasender_api_key: config.wasender_api_key,
+        wasender_device_id: config.wasender_device_id,
+        wasender_status: config.wasender_status || 'disconnected',
+        status: config.status || 'disconnected',
+      })
+    }
+
+    if (!config.phone_number_id || !config.access_token) {
       return NextResponse.json(
         {
           connected: false,

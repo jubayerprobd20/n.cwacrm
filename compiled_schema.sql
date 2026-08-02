@@ -1,9 +1,3 @@
-
-
--- ============================================================
--- FILE: 001_initial_schema.sql
--- ============================================================
-
 -- ============================================================
 -- Idempotent migration — safe to run multiple times.
 -- Uses IF NOT EXISTS for tables/indexes and DROP IF EXISTS
@@ -12,136 +6,6 @@
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- ============================================================
--- SUPER COMPATIBILITY LAYER FOR RAW / STANDALONE POSTGRESQL
--- Prevents Supabase-specific roles, schemas, and storage tables
--- from causing errors on standalone Docker/Dokploy PostgreSQL.
--- ============================================================
-
--- 1. Create dummy roles so OWNER TO / GRANT / REVOKE never fail
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
-    CREATE ROLE postgres;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-    CREATE ROLE authenticated;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-    CREATE ROLE anon;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-    CREATE ROLE service_role;
-  END IF;
-END $$;
-
--- 2. Create auth schema & users table & functions
-CREATE SCHEMA IF NOT EXISTS auth;
-
-CREATE TABLE IF NOT EXISTS auth.users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  email TEXT UNIQUE,
-  raw_user_meta_data JSONB DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE OR REPLACE FUNCTION auth.uid()
-RETURNS UUID AS $$
-BEGIN
-  RETURN COALESCE(
-    current_setting('request.jwt.claim.sub', true),
-    (current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
-  )::uuid;
-EXCEPTION
-  WHEN OTHERS THEN
-    RETURN NULL::uuid;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
-CREATE OR REPLACE FUNCTION auth.role()
-RETURNS TEXT AS $$
-BEGIN
-  RETURN COALESCE(
-    current_setting('request.jwt.claim.role', true),
-    (current_setting('request.jwt.claims', true)::jsonb ->> 'role'),
-    'anon'
-  )::text;
-EXCEPTION
-  WHEN OTHERS THEN
-    RETURN 'anon'::text;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
-CREATE OR REPLACE FUNCTION auth.email()
-RETURNS TEXT AS $$
-BEGIN
-  RETURN COALESCE(
-    current_setting('request.jwt.claim.email', true),
-    (current_setting('request.jwt.claims', true)::jsonb ->> 'email')
-  )::text;
-EXCEPTION
-  WHEN OTHERS THEN
-    RETURN NULL::text;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
--- 3. Create storage schema & buckets/objects tables so Supabase storage policies never fail
-CREATE SCHEMA IF NOT EXISTS storage;
-
-CREATE TABLE IF NOT EXISTS storage.buckets (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  owner UUID,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  public BOOLEAN DEFAULT FALSE,
-  file_size_limit BIGINT,
-  allowed_mime_types TEXT[]
-);
-
-CREATE TABLE IF NOT EXISTS storage.objects (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  bucket_id TEXT REFERENCES storage.buckets(id),
-  name TEXT,
-  owner UUID,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  last_accessed_at TIMESTAMPTZ DEFAULT NOW(),
-  metadata JSONB,
-  path_tokens TEXT[]
-);
-
-CREATE OR REPLACE FUNCTION storage.foldername(name text)
-RETURNS text[] AS $$
-BEGIN
-  RETURN string_to_array(name, '/');
-EXCEPTION
-  WHEN OTHERS THEN
-    RETURN ARRAY[]::text[];
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
-
-CREATE OR REPLACE FUNCTION storage.filename(name text)
-RETURNS text AS $$
-BEGIN
-  RETURN (string_to_array(name, '/'))[array_length(string_to_array(name, '/'), 1)];
-EXCEPTION
-  WHEN OTHERS THEN
-    RETURN name;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
-
--- 4. Create publication supabase_realtime if it does not exist
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
-    CREATE PUBLICATION supabase_realtime;
-  END IF;
-END $$;
-
-
 
 -- ============================================================
 -- PROFILES
@@ -556,12 +420,6 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE conversations;
   END IF;
 END $$;
-
-
--- ============================================================
--- FILE: 002_pipelines_enhancements.sql
--- ============================================================
-
 -- ============================================================
 -- Pipeline enhancements:
 --   * deals.assigned_to — optional FK to profiles.id
@@ -596,12 +454,6 @@ END $$;
 
 ALTER TABLE deals
   ADD CONSTRAINT deals_status_check CHECK (status IN ('open', 'won', 'lost'));
-
-
--- ============================================================
--- FILE: 003_broadcast_recipient_wamid.sql
--- ============================================================
-
 -- ============================================================
 -- Broadcast recipient correlation + aggregate counts
 --
@@ -686,12 +538,6 @@ DROP TRIGGER IF EXISTS broadcast_recipients_aggregate ON broadcast_recipients;
 CREATE TRIGGER broadcast_recipients_aggregate
 AFTER INSERT OR UPDATE OR DELETE ON broadcast_recipients
 FOR EACH ROW EXECUTE FUNCTION public.broadcast_recipient_aggregate_trigger();
-
-
--- ============================================================
--- FILE: 004_contact_delete_set_null.sql
--- ============================================================
-
 -- ============================================================
 -- Allow contact deletion without wiping history.
 --
@@ -757,12 +603,6 @@ ALTER TABLE deals
   ADD CONSTRAINT deals_contact_id_fkey
     FOREIGN KEY (contact_id) REFERENCES contacts(id)
     ON DELETE SET NULL;
-
-
--- ============================================================
--- FILE: 005_broadcast_counts_incremental.sql
--- ============================================================
-
 -- ============================================================
 -- Incremental broadcast aggregate trigger.
 --
@@ -892,12 +732,6 @@ BEGIN
   WHERE b.id = bid;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-
--- ============================================================
--- FILE: 006_automations.sql
--- ============================================================
-
 -- ============================================================
 -- 006_automations.sql — Automations feature
 --
@@ -1038,12 +872,6 @@ CREATE INDEX IF NOT EXISTS idx_automation_pending_due
 ALTER TABLE automation_pending_executions ENABLE ROW LEVEL SECURITY;
 -- No SELECT/INSERT/UPDATE/DELETE policy for authenticated users — all
 -- access is server-side via the service-role key.
-
-
--- ============================================================
--- FILE: 007_automations_increment_counter.sql
--- ============================================================
-
 -- ============================================================
 -- 007_automations_increment_counter.sql
 --
@@ -1079,12 +907,6 @@ REVOKE ALL ON FUNCTION increment_automation_execution_count(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION increment_automation_execution_count(UUID) FROM anon;
 REVOKE ALL ON FUNCTION increment_automation_execution_count(UUID) FROM authenticated;
 GRANT EXECUTE ON FUNCTION increment_automation_execution_count(UUID) TO service_role;
-
-
--- ============================================================
--- FILE: 008_profile_avatars_storage.sql
--- ============================================================
-
 -- ============================================================
 -- 008_profile_avatars_storage.sql
 --
@@ -1144,12 +966,6 @@ CREATE POLICY "Users can delete their own avatar"
     bucket_id = 'avatars'
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
-
-
--- ============================================================
--- FILE: 009_message_actions.sql
--- ============================================================
-
 -- ============================================================
 -- Chat actions: reply linkage + reactions
 --
@@ -1264,12 +1080,6 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE message_reactions;
   END IF;
 END $$;
-
-
--- ============================================================
--- FILE: 010_flows.sql
--- ============================================================
-
 -- ============================================================
 -- Conversational Flows: stateful, branching WhatsApp chatbot.
 --
@@ -1550,12 +1360,6 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE flow_runs;
   END IF;
 END $$;
-
-
--- ============================================================
--- FILE: 011_profile_beta_features.sql
--- ============================================================
-
 -- ============================================================
 -- Per-account beta feature flag column on `profiles`.
 --
@@ -1596,12 +1400,6 @@ ALTER TABLE profiles
 -- No index needed: the column is read on the login codepath (one row
 -- lookup by primary key / user_id, both already indexed) and very
 -- rarely written.
-
-
--- ============================================================
--- FILE: 012_flows_increment_counter.sql
--- ============================================================
-
 -- ============================================================
 -- 012_flows_increment_counter.sql
 --
@@ -1638,12 +1436,6 @@ REVOKE ALL ON FUNCTION increment_flow_execution_count(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION increment_flow_execution_count(UUID) FROM anon;
 REVOKE ALL ON FUNCTION increment_flow_execution_count(UUID) FROM authenticated;
 GRANT EXECUTE ON FUNCTION increment_flow_execution_count(UUID) TO service_role;
-
-
--- ============================================================
--- FILE: 013_whatsapp_config_phone_number_id_unique.sql
--- ============================================================
-
 -- ============================================================
 -- whatsapp_config: enforce one user per phone_number_id
 --
@@ -1728,12 +1520,6 @@ BEGIN
       UNIQUE (phone_number_id);
   END IF;
 END $$;
-
-
--- ============================================================
--- FILE: 014_message_templates_meta_integration.sql
--- ============================================================
-
 -- ============================================================
 -- message_templates: Meta-integration columns + raw-enum status
 --
@@ -1932,12 +1718,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS message_templates_user_name_language_key
 CREATE INDEX IF NOT EXISTS idx_message_templates_meta_template_id
   ON message_templates (meta_template_id)
   WHERE meta_template_id IS NOT NULL;
-
-
--- ============================================================
--- FILE: 015_whatsapp_config_registration.sql
--- ============================================================
-
 -- ============================================================
 -- whatsapp_config: track Meta Cloud API registration state
 --
@@ -1983,12 +1763,6 @@ ALTER TABLE whatsapp_config
 CREATE INDEX IF NOT EXISTS idx_whatsapp_config_registered_at
   ON whatsapp_config (registered_at)
   WHERE registered_at IS NULL;
-
-
--- ============================================================
--- FILE: 016_flow_media.sql
--- ============================================================
-
 -- ============================================================
 -- 016_flow_media.sql
 --
@@ -2103,12 +1877,6 @@ CREATE POLICY "Users can delete their own flow media"
     bucket_id = 'flow-media'
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
-
-
--- ============================================================
--- FILE: 017_account_sharing.sql
--- ============================================================
-
 -- ============================================================
 -- 017_account_sharing.sql — Multi-user accounts (foundation)
 --
@@ -2798,12 +2566,6 @@ ALTER FUNCTION public.handle_new_user() OWNER TO postgres;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
-
--- ============================================================
--- FILE: 018_account_member_rpcs.sql
--- ============================================================
-
 -- ============================================================
 -- 018_account_member_rpcs.sql — RPCs for member management
 --
@@ -3087,12 +2849,6 @@ $$;
 ALTER FUNCTION public.transfer_account_ownership(UUID) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.transfer_account_ownership(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.transfer_account_ownership(UUID) TO authenticated;
-
-
--- ============================================================
--- FILE: 019_invitation_rpcs.sql
--- ============================================================
-
 -- ============================================================
 -- 019_invitation_rpcs.sql — peek + redeem invitation RPCs
 --
@@ -3330,12 +3086,6 @@ $$;
 ALTER FUNCTION public.redeem_invitation(TEXT) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.redeem_invitation(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.redeem_invitation(TEXT) TO authenticated;
-
-
--- ============================================================
--- FILE: 020_account_sharing_followups.sql
--- ============================================================
-
 -- ============================================================
 -- 020_account_sharing_followups.sql — review-board fixes for
 -- the multi-user accounts series (#167-#177).
@@ -3458,12 +3208,6 @@ CREATE POLICY "Members can delete flow media"
 
 -- Public read policy from 016 stays as-is; reads cross both path
 -- conventions without modification.
-
-
--- ============================================================
--- FILE: 021_account_default_currency.sql
--- ============================================================
-
 -- ============================================================
 -- 021_account_default_currency
 --
@@ -3496,12 +3240,6 @@ ALTER TABLE accounts
 ALTER TABLE accounts
   ADD CONSTRAINT accounts_default_currency_format
   CHECK (default_currency ~ '^[A-Z]{3}$');
-
-
--- ============================================================
--- FILE: 022_contact_phone_dedup.sql
--- ============================================================
-
 -- ============================================================
 -- 022_contact_phone_dedup
 --
@@ -3622,12 +3360,6 @@ SELECT public.merge_duplicate_contacts();
 CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_account_phone_normalized
   ON contacts (account_id, phone_normalized)
   WHERE phone_normalized <> '';
-
-
--- ============================================================
--- FILE: 023_chat_media.sql
--- ============================================================
-
 -- ============================================================
 -- 023_chat_media.sql
 --
@@ -3750,12 +3482,6 @@ CREATE POLICY "Members can delete chat media"
         AND ('account-' || p.account_id::text) = (storage.foldername(name))[1]
     )
   );
-
-
--- ============================================================
--- FILE: 024_member_presence.sql
--- ============================================================
-
 -- ============================================================
 -- 024_member_presence.sql — team member presence (online / away)
 --
@@ -3858,12 +3584,6 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE member_presence;
   END IF;
 END $$;
-
-
--- ============================================================
--- FILE: 025_filter_contacts_by_tags.sql
--- ============================================================
-
 -- ============================================================
 -- 025_filter_contacts_by_tags.sql — server-side tag filter
 --
@@ -3939,12 +3659,6 @@ $$;
 ALTER FUNCTION public.filter_contacts_by_tags(UUID[], TEXT, INT, INT) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.filter_contacts_by_tags(UUID[], TEXT, INT, INT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.filter_contacts_by_tags(UUID[], TEXT, INT, INT) TO authenticated;
-
-
--- ============================================================
--- FILE: 026_api_keys.sql
--- ============================================================
-
 -- ============================================================
 -- 026_api_keys.sql — Public API credentials (groundwork)
 --
@@ -4029,12 +3743,6 @@ CREATE POLICY api_keys_update ON api_keys FOR UPDATE
 DROP POLICY IF EXISTS api_keys_delete ON api_keys;
 CREATE POLICY api_keys_delete ON api_keys FOR DELETE
   USING (is_account_member(account_id, 'admin'));
-
-
--- ============================================================
--- FILE: 027_notifications.sql
--- ============================================================
-
 -- ============================================================
 -- NOTIFICATIONS
 -- ============================================================
@@ -4166,12 +3874,6 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
   END IF;
 END $$;
-
-
--- ============================================================
--- FILE: 028_webhook_endpoints.sql
--- ============================================================
-
 -- ============================================================
 -- 028_webhook_endpoints.sql — Outbound event webhooks (public API)
 --
@@ -4275,12 +3977,6 @@ RETURNS void AS $$
       END
   WHERE id = endpoint_id;
 $$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
-
-
--- ============================================================
--- FILE: 029_ai_reply.sql
--- ============================================================
-
 -- ============================================================
 -- 029_ai_reply.sql — AI reply assistant (bring-your-own-key)
 --
@@ -4413,11 +4109,15 @@ RETURNS boolean AS $$
   SELECT EXISTS (SELECT 1 FROM claimed);
 $$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
 
-
--- ============================================================
--- FILE: 030_ai_knowledge.sql
--- ============================================================
-
+-- The auto-reply bot claims slots under the service-role client (the
+-- inbound webhook has no auth.uid()), so it needs EXECUTE. SECURITY
+-- DEFINER alone is not enough — it sets the privileges the function runs
+-- *with*, not who may call it. Without this grant the RPC fails with
+-- permission-denied on instances where the default PUBLIC execute
+-- privilege has been revoked (hardened / self-hosted Supabase), and the
+-- bot silently never replies. Only the service role claims slots, so we
+-- grant to it alone (mirrors 007 / 012). See migration 031 / issue #345.
+GRANT EXECUTE ON FUNCTION public.claim_ai_reply_slot(uuid, integer) TO service_role;
 -- ============================================================
 -- 030_ai_knowledge.sql — AI knowledge base (RAG grounding)
 --
@@ -4450,7 +4150,7 @@ $$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
 -- Idempotent — safe to run multiple times.
 -- ============================================================
 
--- CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Optional embeddings key (OpenAI-compatible). When set, the KB is
 -- embedded and semantic search turns on. Stored AES-256-GCM-encrypted,
@@ -4524,7 +4224,7 @@ CREATE TABLE IF NOT EXISTS ai_knowledge_chunks (
   -- follow-up; accounts wanting paraphrase/morphology matching add an
   -- embeddings key for the semantic path.)
   fts          tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED,
-  embedding    text,
+  embedding    vector(1536),
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 
@@ -4542,7 +4242,8 @@ CREATE INDEX IF NOT EXISTS ai_knowledge_chunks_fts_idx
 -- against an empty/tiny table its centroids are meaningless and recall
 -- is poor until it's large and REINDEXed. HNSW needs no training and is
 -- accurate from the first row.
--- CREATE INDEX IF NOT EXISTS ai_knowledge_chunks_embedding_idx ON ai_knowledge_chunks USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS ai_knowledge_chunks_embedding_idx
+  ON ai_knowledge_chunks USING hnsw (embedding vector_cosine_ops);
 
 ALTER TABLE ai_knowledge_chunks ENABLE ROW LEVEL SECURITY;
 
@@ -4601,17 +4302,15 @@ CREATE OR REPLACE FUNCTION public.match_ai_knowledge_semantic(
   p_match_count     integer
 )
 RETURNS TABLE (id uuid, content text, distance real) AS $$
-BEGIN
-  RETURN QUERY
-    SELECT c.id,
-           c.content,
-           0.0::real AS distance
-    FROM ai_knowledge_chunks c
-    WHERE c.account_id = p_account_id
-      AND c.embedding IS NOT NULL
-    LIMIT GREATEST(p_match_count, 0);
-END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
+  SELECT c.id,
+         c.content,
+         (c.embedding <=> p_query_embedding::vector(1536)) AS distance
+  FROM ai_knowledge_chunks c
+  WHERE c.account_id = p_account_id
+    AND c.embedding IS NOT NULL
+  ORDER BY c.embedding <=> p_query_embedding::vector(1536)
+  LIMIT GREATEST(p_match_count, 0);
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 
 -- Lock down EXECUTE (mirrors migrations 018 / 025). These are
 -- SECURITY DEFINER and would otherwise default to PUBLIC — i.e. the
@@ -4623,12 +4322,33 @@ REVOKE ALL ON FUNCTION public.match_ai_knowledge_fts(uuid, text, integer) FROM P
 GRANT EXECUTE ON FUNCTION public.match_ai_knowledge_fts(uuid, text, integer) TO authenticated, service_role;
 REVOKE ALL ON FUNCTION public.match_ai_knowledge_semantic(uuid, text, integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.match_ai_knowledge_semantic(uuid, text, integer) TO authenticated, service_role;
-
-
 -- ============================================================
--- FILE: 031_multi_tenant_saas.sql
+-- 031_ai_reply_slot_grant.sql — fix: AI auto-reply never fires
+--
+-- Migration 029 created `claim_ai_reply_slot(uuid, integer)` as a
+-- SECURITY DEFINER function but never GRANTed EXECUTE on it — the only
+-- function in the schema missing its grant (cf. 007, 012, 018, 019,
+-- 025, 030, which all grant EXECUTE explicitly).
+--
+-- SECURITY DEFINER changes the privileges a function runs *with*, not
+-- who may *call* it: the caller still needs EXECUTE. On Postgres
+-- instances where the default PUBLIC execute privilege on public-schema
+-- functions has been revoked (standard on hardened / self-hosted
+-- Supabase), `service_role` therefore cannot invoke it. The AI
+-- auto-reply path runs entirely under the service-role client (the
+-- inbound webhook has no auth.uid()), so `db.rpc('claim_ai_reply_slot')`
+-- fails with permission-denied, the caller bails before sending, and the
+-- bot silently never answers ANY inbound message — while the Playground
+-- (which never claims a slot) keeps working. See issue #345.
+--
+-- Only the service role ever claims a slot, so we grant to it alone —
+-- matching the increment-counter precedent in 007 / 012, and never
+-- exposing a counter-mutating function to end users.
+--
+-- Idempotent — GRANT is a no-op when the privilege already exists.
 -- ============================================================
 
+GRANT EXECUTE ON FUNCTION public.claim_ai_reply_slot(uuid, integer) TO service_role;
 -- ============================================================
 -- 031_multi_tenant_saas.sql — Multi-tenant SaaS Foundation
 --
@@ -5129,3 +4849,1734 @@ CREATE POLICY ai_knowledge_documents_delete ON public.ai_knowledge_documents FOR
 -- ai_knowledge_chunks
 CREATE POLICY ai_knowledge_chunks_select ON public.ai_knowledge_chunks FOR SELECT USING (public.is_organization_member(organization_id));
 CREATE POLICY ai_knowledge_chunks_modify ON public.ai_knowledge_chunks FOR ALL USING (public.is_organization_member(organization_id, 'admin')) WITH CHECK (public.is_organization_member(organization_id, 'admin'));
+-- ============================================================
+-- 032_create_organization_rpc.sql — Create Organization RPC
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.create_organization_with_owner(
+  p_name TEXT,
+  p_slug TEXT
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_org_id UUID;
+  v_reserved_slugs TEXT[] := ARRAY['app', 'api', 'www', 'admin', 'auth', 'static'];
+BEGIN
+  -- 1. Resolve current user ID from Supabase session
+  v_user_id := auth.uid();
+  
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'unauthenticated',
+      'message', 'User must be authenticated to create an organization.'
+    );
+  END IF;
+
+  -- 2. Server-side minimum length check
+  IF length(p_slug) < 3 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'slug_too_short',
+      'message', 'Slug must be at least 3 characters.'
+    );
+  END IF;
+
+  -- 2.5 Check reserved slugs
+  IF p_slug = ANY(v_reserved_slugs) THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'slug_reserved',
+      'message', 'This slug is reserved and cannot be used.'
+    );
+  END IF;
+
+  -- 3. Basic format check (alphanumeric and hyphens only, lowercase)
+  IF NOT (p_slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$') THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'invalid_slug_format',
+      'message', 'Slug must contain only lowercase alphanumeric characters and hyphens, and cannot start or end with a hyphen.'
+    );
+  END IF;
+
+  -- 4. Check if slug exists BEFORE insert (fast path check)
+  IF EXISTS (SELECT 1 FROM public.organizations WHERE slug = p_slug) THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'slug_taken',
+      'message', 'This slug is already taken.'
+    );
+  END IF;
+
+  -- 5. Atomicity & concurrent race-condition handling using unique violation catch
+  BEGIN
+    INSERT INTO public.organizations (name, slug, plan, subscription_status)
+    VALUES (p_name, p_slug, 'free', 'trialing')
+    RETURNING id INTO v_org_id;
+
+    INSERT INTO public.user_organizations (user_id, organization_id, role)
+    VALUES (v_user_id, v_org_id, 'owner');
+
+    RETURN jsonb_build_object(
+      'success', true,
+      'org_id', v_org_id,
+      'org_slug', p_slug
+    );
+  EXCEPTION 
+    WHEN unique_violation THEN
+      RETURN jsonb_build_object(
+        'success', false,
+        'error', 'slug_taken',
+        'message', 'This slug is already taken.'
+      );
+    WHEN OTHERS THEN
+      RAISE WARNING 'create_organization_with_owner failed: %', SQLERRM;
+      RETURN jsonb_build_object(
+        'success', false,
+        'error', 'unknown_error',
+        'message', 'Something went wrong. Please try again.'
+      );
+  END;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.create_organization_with_owner(TEXT, TEXT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.create_organization_with_owner(TEXT, TEXT) FROM anon, public;
+-- ============================================================
+-- 032_fix_ai_knowledge_membership.sql — stop cross-account KB
+--                                        reads (GHSA-fg5p-2qc3-jmxr, H2)
+--
+-- The problem
+--
+--   `match_ai_knowledge_fts` and `match_ai_knowledge_semantic`
+--   (migration 030) are SECURITY DEFINER, so they bypass RLS. They
+--   filter only on the caller-supplied `p_account_id` and never
+--   call `is_account_member()`, yet they are GRANTed to
+--   `authenticated`. The 030 header assumed only the service-role
+--   bot would call them, but any logged-in user can hit PostgREST
+--   directly with a foreign `p_account_id` and read another
+--   tenant's knowledge base:
+--
+--     POST /rest/v1/rpc/match_ai_knowledge_fts
+--       { "p_account_id": "<victim>", "p_query": "price",
+--         "p_match_count": 1000 }
+--
+-- The fix
+--
+--   Recreate both functions as SECURITY INVOKER — the only change
+--   is the security mode; the bodies are byte-for-byte the same.
+--   The existing SELECT policy
+--     ai_knowledge_chunks_select = is_account_member(account_id)
+--   then governs `authenticated` callers, so a foreign
+--   `p_account_id` returns zero rows, while the auto-reply bot
+--   (service_role) still bypasses RLS and works unchanged. This
+--   mirrors the deliberate SECURITY INVOKER choice in
+--   `filter_contacts_by_tags` (migration 025).
+--
+--   The legitimate draft path already passes the caller's *own*
+--   accountId (see src/lib/ai/knowledge.ts → retrieveKnowledge),
+--   so it keeps returning that account's chunks under RLS.
+--
+-- NOTE FOR MAINTAINER
+--
+--   This migration was not run against a live database. Validate
+--   the two checks at the bottom in your own environment. If you
+--   would rather keep these SECURITY DEFINER, the alternative is to
+--   add `AND (auth.role() = 'service_role' OR
+--   is_account_member(p_account_id))` to each WHERE clause instead.
+-- ============================================================
+
+-- Lexical: full-text rank. Body unchanged from migration 030 —
+-- only SECURITY DEFINER → SECURITY INVOKER differs.
+CREATE OR REPLACE FUNCTION public.match_ai_knowledge_fts(
+  p_account_id  uuid,
+  p_query       text,
+  p_match_count integer
+)
+RETURNS TABLE (id uuid, content text, rank real) AS $$
+  SELECT c.id,
+         c.content,
+         ts_rank(c.fts, plainto_tsquery('simple', p_query)) AS rank
+  FROM ai_knowledge_chunks c
+  WHERE c.account_id = p_account_id
+    AND c.fts @@ plainto_tsquery('simple', p_query)
+  ORDER BY rank DESC
+  LIMIT GREATEST(p_match_count, 0);
+$$ LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public;
+
+-- Semantic: cosine distance. Body unchanged from migration 030 —
+-- only SECURITY DEFINER → SECURITY INVOKER differs.
+CREATE OR REPLACE FUNCTION public.match_ai_knowledge_semantic(
+  p_account_id      uuid,
+  p_query_embedding text,
+  p_match_count     integer
+)
+RETURNS TABLE (id uuid, content text, distance real) AS $$
+  SELECT c.id,
+         c.content,
+         (c.embedding <=> p_query_embedding::vector(1536)) AS distance
+  FROM ai_knowledge_chunks c
+  WHERE c.account_id = p_account_id
+    AND c.embedding IS NOT NULL
+  ORDER BY c.embedding <=> p_query_embedding::vector(1536)
+  LIMIT GREATEST(p_match_count, 0);
+$$ LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public;
+
+-- Re-assert the EXECUTE grants (CREATE OR REPLACE preserves them,
+-- but keep them explicit and re-runnable — mirrors migration 030).
+REVOKE ALL ON FUNCTION public.match_ai_knowledge_fts(uuid, text, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.match_ai_knowledge_fts(uuid, text, integer) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.match_ai_knowledge_semantic(uuid, text, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.match_ai_knowledge_semantic(uuid, text, integer) TO authenticated, service_role;
+
+-- ============================================================
+-- Manual validation (run against a live instance — no automated
+-- SQL test harness exists in this repo):
+--
+--   1. As a non-member JWT, calling either RPC with a foreign
+--      p_account_id must return zero rows:
+--        POST /rest/v1/rpc/match_ai_knowledge_fts
+--          { "p_account_id": "<other-account>", "p_query": "price",
+--            "p_match_count": 1000 }              -> []
+--   2. The draft flow (own accountId, authenticated) and the
+--      auto-reply bot (service_role) must still return the
+--      account's own chunks.
+-- ============================================================
+-- ============================================================
+-- 033_add_razorpay_subscription_id.sql — Add razorpay_subscription_id to organizations
+-- ============================================================
+
+ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS razorpay_subscription_id TEXT;
+-- ============================================================
+-- 033_ai_reply_polish.sql — AI reply assistant polish
+--
+-- Follow-ups to 029_ai_reply / 030_ai_knowledge that make the
+-- auto-reply bot visible and controllable from the inbox, complete the
+-- handoff, and record token spend:
+--
+--   1. messages.ai_generated       — marks a reply the bot sent (vs a
+--                                     deterministic Flow/bot send), so
+--                                     the inbox can badge it "AI".
+--   2. ai_configs.handoff_agent_id — where a handed-off conversation is
+--                                     routed. NULL = leave unassigned
+--                                     (drop into the shared queue).
+--   3. conversations.ai_handoff_summary
+--                                  — a short internal note the bot writes
+--                                    when it hands off, surfaced to the
+--                                    agent who takes over.
+--   4. ai_usage_log                — per-run provider token usage, for
+--                                    cost visibility on the account's BYO
+--                                    key. Written by the service role from
+--                                    the draft route + auto-reply bot.
+--
+-- Idempotent — safe to run multiple times.
+-- ============================================================
+
+-- ============================================================
+-- 1. Mark AI-generated messages.
+--
+-- Auto-replies are inserted as sender_type='bot' (same as Flow sends);
+-- this column is the only thing that distinguishes an LLM reply from a
+-- deterministic one, so the inbox can show the "AI" badge on the right
+-- bubbles only.
+-- ============================================================
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS ai_generated boolean NOT NULL DEFAULT false;
+
+-- ============================================================
+-- 2. Handoff routing target + 3. handoff summary.
+-- ============================================================
+ALTER TABLE ai_configs
+  ADD COLUMN IF NOT EXISTS handoff_agent_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+
+ALTER TABLE conversations
+  ADD COLUMN IF NOT EXISTS ai_handoff_summary text;
+
+-- ============================================================
+-- 4. Per-run token-usage log.
+--
+-- One row per LLM call (draft or auto-reply). Best-effort: the writer
+-- never blocks a reply on a failed insert. Kept append-only; prune with
+-- a scheduled job if it grows (an active account writes a handful of
+-- rows per conversation).
+--
+-- RLS: admin+ read (spend is billing-class, not something a viewer/agent
+-- needs). Writes come from the service-role client (webhook + route),
+-- which bypasses RLS, so there is no INSERT policy for `authenticated`.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ai_usage_log (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id        uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  conversation_id   uuid REFERENCES conversations(id) ON DELETE SET NULL,
+  -- 'auto_reply' | 'draft' — which surface spent the tokens.
+  mode              text NOT NULL CHECK (mode IN ('auto_reply', 'draft')),
+  provider          text NOT NULL CHECK (provider IN ('openai', 'anthropic')),
+  model             text NOT NULL,
+  prompt_tokens     integer NOT NULL DEFAULT 0,
+  completion_tokens integer NOT NULL DEFAULT 0,
+  total_tokens      integer NOT NULL DEFAULT 0,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+
+-- Account-scoped, newest-first reads (usage dashboards, "spend this
+-- month") — the only access pattern.
+CREATE INDEX IF NOT EXISTS idx_ai_usage_log_account_created
+  ON ai_usage_log(account_id, created_at DESC);
+
+ALTER TABLE ai_usage_log ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: admin+ only (spend visibility is settings/billing-class).
+DROP POLICY IF EXISTS ai_usage_log_select ON ai_usage_log;
+CREATE POLICY ai_usage_log_select ON ai_usage_log FOR SELECT
+  USING (is_account_member(account_id, 'admin'));
+
+-- No INSERT/UPDATE/DELETE policies for `authenticated`: the log is
+-- written exclusively by the service role (webhook + draft route) and
+-- is never mutated from the client.
+-- ============================================================
+-- 034_canned_responses.sql — Canned Responses (Quick Replies)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.canned_responses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  shortcut TEXT NOT NULL,
+  content TEXT NOT NULL,
+  media_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(organization_id, shortcut)
+);
+
+-- Index for shortcut lookup per organization
+CREATE INDEX IF NOT EXISTS idx_canned_responses_org_shortcut 
+  ON public.canned_responses(organization_id, shortcut);
+
+ALTER TABLE public.canned_responses ENABLE ROW LEVEL SECURITY;
+
+-- Drop all existing policies on canned_responses (to be clean and idempotent)
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS canned_responses_select ON public.canned_responses;
+  DROP POLICY IF EXISTS canned_responses_insert ON public.canned_responses;
+  DROP POLICY IF EXISTS canned_responses_update ON public.canned_responses;
+  DROP POLICY IF EXISTS canned_responses_delete ON public.canned_responses;
+END $$;
+
+-- Policies: any org member can view; agents and above can modify
+CREATE POLICY canned_responses_select ON public.canned_responses
+  FOR SELECT USING (public.is_organization_member(organization_id));
+
+CREATE POLICY canned_responses_insert ON public.canned_responses
+  FOR INSERT WITH CHECK (public.is_organization_member(organization_id, 'agent'));
+
+CREATE POLICY canned_responses_update ON public.canned_responses
+  FOR UPDATE USING (public.is_organization_member(organization_id, 'agent'));
+
+CREATE POLICY canned_responses_delete ON public.canned_responses
+  FOR DELETE USING (public.is_organization_member(organization_id, 'agent'));
+
+-- Trigger to update updated_at
+DROP TRIGGER IF EXISTS set_updated_at ON public.canned_responses;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.canned_responses
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Enable realtime for canned_responses
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'canned_responses'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.canned_responses;
+  END IF;
+END $$;
+-- ============================================================
+-- 034_fix_profiles_update_rls.sql — lock down privilege columns
+--                                    on profiles (GHSA-fg5p-2qc3-jmxr, C1)
+--
+-- NOTE: renamed from 031 → 034 to resolve a duplicate migration version.
+-- The 031 slot was already taken by 031_ai_reply_slot_grant.sql (#345),
+-- so shipping this as 031 too made a clean `supabase db` apply fail with
+-- a duplicate schema_migrations key (SQLSTATE 23505). This migration is
+-- idempotent (DROP POLICY IF EXISTS / CREATE OR REPLACE) and independent
+-- of the AI tables, so re-sequencing it after 033 is safe.
+--
+-- The problem
+--
+--   The `profiles_update` RLS policy from migration 017 gates on
+--   `auth.uid() = user_id` only — it lets a user edit their *own*
+--   row, which is correct for self-service fields (full_name,
+--   avatar). But `account_role` and `account_id` also live on
+--   `profiles`, and they are the source of truth for
+--   `is_account_member()`. RLS constrains *which rows* you may
+--   update, not *which columns*, and no column-level GRANT or
+--   trigger guards them. So the normal `authenticated` browser
+--   client can self-serve a privilege escalation / tenant move:
+--
+--     -- viewer self-promotes to owner of the shared account
+--     UPDATE profiles SET account_role = 'owner' WHERE user_id = auth.uid();
+--     -- attacker relocates into a victim tenant
+--     UPDATE profiles SET account_id = '<victim>' WHERE user_id = auth.uid();
+--
+--   Both pass the WITH CHECK because `user_id` is unchanged.
+--
+-- The fix
+--
+--   A BEFORE UPDATE trigger that rejects any change to
+--   `account_role` / `account_id` when the caller is the
+--   `authenticated` role (the browser). The legitimate writers are
+--   unaffected:
+--     - handle_new_user + the 018/019 member/invitation RPCs are
+--       SECURITY DEFINER owned by `postgres`, so `current_user` is
+--       `postgres`, not `authenticated`.
+--     - the server backend runs as `service_role`.
+--   Self-service edits that leave both columns untouched (the
+--   IS DISTINCT FROM checks are false) also pass through freely.
+--
+--   Membership stays owned by the supervised RPCs (018/019), which
+--   is exactly the model migration 018's header describes.
+--
+-- NOTE FOR MAINTAINER
+--
+--   `current_user` is the reliable discriminator here because every
+--   sanctioned writer runs as postgres (DEFINER) or service_role,
+--   and PostgREST's browser clients run as `authenticated`. If you
+--   ever add a NON-definer RPC or a new role that must write these
+--   columns, extend the guard's role check accordingly. Validate in
+--   your own environment before relying on this (see the checks at
+--   the bottom); this migration was not run against a live database.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.enforce_profile_privilege_columns()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF (NEW.account_role IS DISTINCT FROM OLD.account_role
+      OR NEW.account_id IS DISTINCT FROM OLD.account_id)
+     AND current_user = 'authenticated'
+  THEN
+    RAISE EXCEPTION
+      'account_role and account_id cannot be changed directly; use the account member/invitation RPCs'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+ALTER FUNCTION public.enforce_profile_privilege_columns() OWNER TO postgres;
+
+DROP TRIGGER IF EXISTS enforce_profile_privilege_columns ON public.profiles;
+CREATE TRIGGER enforce_profile_privilege_columns
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_profile_privilege_columns();
+
+-- ============================================================
+-- Manual validation (run against a live instance — no automated
+-- SQL test harness exists in this repo):
+--
+--   1. As a viewer/member JWT via PostgREST, both of these must
+--      return 42501 (insufficient_privilege):
+--        PATCH /rest/v1/profiles?user_id=eq.<self> { "account_role": "owner" }
+--        PATCH /rest/v1/profiles?user_id=eq.<self> { "account_id": "<other>" }
+--   2. A self-service edit that leaves both columns alone must
+--      still succeed:
+--        PATCH /rest/v1/profiles?user_id=eq.<self> { "full_name": "New Name" }
+--   3. The member/invitation RPCs (set_member_role,
+--      transfer_account_ownership, redeem_invitation) must still
+--      succeed — they run SECURITY DEFINER as postgres.
+-- ============================================================
+-- ============================================================
+-- 035_interactive_messages.sql
+--
+-- Full support for WhatsApp interactive messages (reply buttons +
+-- list messages) beyond the Flows subsystem.
+--
+--   1. messages.interactive_payload — the structured payload of an
+--      OUTBOUND interactive message (buttons / list) so it round-trips:
+--      the thread can re-render the buttons/rows we sent, not just the
+--      body text. Migration 010 already added 'interactive' to the
+--      content_type CHECK and the inbound `interactive_reply_id`
+--      column, so no CHECK change is needed here.
+--
+--   2. quick_replies — reusable snippets (plain text OR a saved
+--      interactive message) an agent can insert from the inbox
+--      composer. Account-scoped, same tenancy model as automations.
+-- ============================================================
+
+-- 1. Outbound interactive payload -----------------------------
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS interactive_payload JSONB;
+
+-- 2. Quick replies --------------------------------------------
+CREATE TABLE IF NOT EXISTS quick_replies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  -- Tenancy. Every member of the account shares its quick replies.
+  account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  -- Author / audit only — never used for tenancy isolation.
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  -- 'text' snippets carry `content_text`; 'interactive' snippets carry
+  -- `interactive_payload` (validated app-side against Meta's limits).
+  kind TEXT NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'interactive')),
+  content_text TEXT,
+  interactive_payload JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_quick_replies_account ON quick_replies(account_id);
+
+ALTER TABLE quick_replies ENABLE ROW LEVEL SECURITY;
+
+-- Account-scoped policies mirroring automations (see 017): any member
+-- can read; agent+ can create / edit / delete.
+DROP POLICY IF EXISTS quick_replies_select ON quick_replies;
+DROP POLICY IF EXISTS quick_replies_insert ON quick_replies;
+DROP POLICY IF EXISTS quick_replies_update ON quick_replies;
+DROP POLICY IF EXISTS quick_replies_delete ON quick_replies;
+CREATE POLICY quick_replies_select ON quick_replies FOR SELECT
+  USING (is_account_member(account_id));
+CREATE POLICY quick_replies_insert ON quick_replies FOR INSERT
+  WITH CHECK (is_account_member(account_id, 'agent'));
+CREATE POLICY quick_replies_update ON quick_replies FOR UPDATE
+  USING (is_account_member(account_id, 'agent'));
+CREATE POLICY quick_replies_delete ON quick_replies FOR DELETE
+  USING (is_account_member(account_id, 'agent'));
+
+DROP TRIGGER IF EXISTS set_updated_at ON quick_replies;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON quick_replies
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- ============================================================
+-- 035_whatsapp_widget.sql — Interactive WhatsApp Chat Widget
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.whatsapp_widgets (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  bubble_text TEXT NOT NULL DEFAULT 'Chat with us',
+  welcome_message TEXT NOT NULL DEFAULT 'Hi! How can we help you today?',
+  agent_phone TEXT NOT NULL,
+  avatar_url TEXT,
+  position TEXT NOT NULL DEFAULT 'right' CHECK (position IN ('left', 'right')),
+  theme_color TEXT NOT NULL DEFAULT '#25D366',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(organization_id)
+);
+
+-- Index for org lookup
+CREATE INDEX IF NOT EXISTS idx_whatsapp_widgets_org 
+  ON public.whatsapp_widgets(organization_id);
+
+ALTER TABLE public.whatsapp_widgets ENABLE ROW LEVEL SECURITY;
+
+-- Drop all existing policies (idempotency)
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS whatsapp_widgets_select_public ON public.whatsapp_widgets;
+  DROP POLICY IF EXISTS whatsapp_widgets_insert ON public.whatsapp_widgets;
+  DROP POLICY IF EXISTS whatsapp_widgets_update ON public.whatsapp_widgets;
+  DROP POLICY IF EXISTS whatsapp_widgets_delete ON public.whatsapp_widgets;
+END $$;
+
+-- Policies:
+-- SELECT is public/anonymous so the widget script can retrieve configs
+CREATE POLICY whatsapp_widgets_select_public ON public.whatsapp_widgets
+  FOR SELECT USING (true);
+
+-- INSERT/UPDATE/DELETE are admin/agent operations
+CREATE POLICY whatsapp_widgets_insert ON public.whatsapp_widgets
+  FOR INSERT WITH CHECK (public.is_organization_member(organization_id, 'agent'));
+
+CREATE POLICY whatsapp_widgets_update ON public.whatsapp_widgets
+  FOR UPDATE USING (public.is_organization_member(organization_id, 'agent'));
+
+CREATE POLICY whatsapp_widgets_delete ON public.whatsapp_widgets
+  FOR DELETE USING (public.is_organization_member(organization_id, 'agent'));
+
+-- Trigger for updating updated_at
+DROP TRIGGER IF EXISTS set_updated_at ON public.whatsapp_widgets;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.whatsapp_widgets
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Enable realtime for whatsapp_widgets
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'whatsapp_widgets'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_widgets;
+  END IF;
+END $$;
+-- ============================================================
+-- 036_business_hours.sql — Business Hours & OOO Auto-Reply
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.business_hours (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL UNIQUE REFERENCES public.organizations(id) ON DELETE CASCADE,
+  timezone TEXT NOT NULL DEFAULT 'UTC',
+  ooo_message TEXT NOT NULL DEFAULT 'Thank you for your message. We are currently closed and will get back to you during our working hours.',
+  is_enabled BOOLEAN NOT NULL DEFAULT false,
+  daily_hours JSONB NOT NULL DEFAULT '{
+    "0": {"enabled": false, "open": "09:00", "close": "18:00"},
+    "1": {"enabled": true, "open": "09:00", "close": "18:00"},
+    "2": {"enabled": true, "open": "09:00", "close": "18:00"},
+    "3": {"enabled": true, "open": "09:00", "close": "18:00"},
+    "4": {"enabled": true, "open": "09:00", "close": "18:00"},
+    "5": {"enabled": true, "open": "09:00", "close": "18:00"},
+    "6": {"enabled": false, "open": "09:00", "close": "18:00"}
+  }'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.business_hours ENABLE ROW LEVEL SECURITY;
+
+-- is_organization_member check (similar to tags / custom_fields)
+DROP POLICY IF EXISTS business_hours_select ON public.business_hours;
+CREATE POLICY business_hours_select ON public.business_hours
+  FOR SELECT USING (public.is_organization_member(organization_id));
+
+DROP POLICY IF EXISTS business_hours_modify ON public.business_hours;
+CREATE POLICY business_hours_modify ON public.business_hours
+  FOR ALL USING (public.is_organization_member(organization_id, 'admin'))
+  WITH CHECK (public.is_organization_member(organization_id, 'admin'));
+
+-- Trigger to automatically update updated_at
+DROP TRIGGER IF EXISTS set_updated_at ON public.business_hours;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.business_hours
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- ============================================================
+-- 036_conversation_contact_dedup
+--
+-- Prevent the same contact from fragmenting into multiple
+-- conversations within one account (issue #363).
+--
+-- The inbound webhook and the public-API resolver both follow a
+-- "one conversation per (account, contact)" convention, but that
+-- convention was only ever enforced in application code with a
+-- `.single()` / `.maybeSingle()` lookup and no DB constraint. Two
+-- problems compounded:
+--
+--   1. A race (Meta retries a delivery, or a batch delivers two
+--      messages that fan out to concurrent `after()` runs) let two
+--      inserts both miss the lookup and create two conversations —
+--      unlike contacts (migration 022) there was no unique index and
+--      no unique-violation backstop.
+--   2. Once ≥2 conversations existed for a contact, the `.single()`
+--      lookup errored on *every* subsequent inbound message, so the
+--      code fell through and created yet another conversation each
+--      time — the duplication snowballed, which is what the reporter
+--      saw (a wall of duplicate chats for one number).
+--
+-- This migration mirrors 022_contact_phone_dedup:
+--   1. merges existing duplicate conversations into the oldest row,
+--      re-pointing every conversation-scoped child first so nothing
+--      is lost;
+--   2. adds a UNIQUE index on (account_id, contact_id) — the
+--      authoritative guarantee that covers every write path.
+--
+-- Idempotent. **No data loss** — duplicate conversations are merged,
+-- not dropped: child rows (messages, message_reactions, deals,
+-- flow_runs, notifications, ai_usage_log) are re-pointed to the
+-- surviving (oldest) conversation before the losers are deleted.
+-- ============================================================
+
+-- 1) One-time (re-runnable) merge of existing duplicates.
+--    SECURITY DEFINER so it can re-point rows across tables
+--    regardless of the caller's RLS; it only ever collapses
+--    conversations that share the same (account_id, contact_id).
+CREATE OR REPLACE FUNCTION public.merge_duplicate_conversations()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_group    RECORD;
+  v_survivor UUID;
+  v_losers   UUID[];
+  v_all      UUID[];
+  v_merged   INTEGER := 0;
+BEGIN
+  FOR v_group IN
+    SELECT account_id,
+           contact_id,
+           array_agg(id ORDER BY created_at ASC, id ASC) AS ids,
+           COALESCE(SUM(unread_count), 0)                AS total_unread
+    FROM conversations
+    GROUP BY account_id, contact_id
+    HAVING count(*) > 1
+  LOOP
+    v_all      := v_group.ids;
+    v_survivor := v_all[1];
+    v_losers   := v_all[2:array_length(v_all, 1)];
+
+    -- Re-point every conversation-scoped child from the losers onto
+    -- the survivor. None of these carry a conversation-scoped unique
+    -- constraint (message_id is intentionally non-unique — see
+    -- migration 009), so a plain UPDATE is safe. Doing this BEFORE the
+    -- delete is what saves the ON DELETE CASCADE children (messages,
+    -- message_reactions, notifications) from being removed with the
+    -- loser conversations.
+    UPDATE messages          SET conversation_id = v_survivor WHERE conversation_id = ANY(v_losers);
+    UPDATE message_reactions SET conversation_id = v_survivor WHERE conversation_id = ANY(v_losers);
+    UPDATE deals             SET conversation_id = v_survivor WHERE conversation_id = ANY(v_losers);
+    UPDATE flow_runs         SET conversation_id = v_survivor WHERE conversation_id = ANY(v_losers);
+    UPDATE notifications     SET conversation_id = v_survivor WHERE conversation_id = ANY(v_losers);
+    UPDATE ai_usage_log      SET conversation_id = v_survivor WHERE conversation_id = ANY(v_losers);
+
+    -- Roll the merged unread counts onto the survivor and re-derive
+    -- its last-message summary from the now-complete message set, so
+    -- the surviving thread reflects the full history.
+    UPDATE conversations c
+    SET unread_count      = v_group.total_unread,
+        last_message_text = lm.content_text,
+        last_message_at   = lm.created_at,
+        updated_at        = NOW()
+    FROM (
+      SELECT content_text, created_at
+      FROM messages
+      WHERE conversation_id = v_survivor
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) lm
+    WHERE c.id = v_survivor;
+
+    -- Survivor may have no messages at all (edge case). Still fold in
+    -- the merged unread count in that case.
+    UPDATE conversations
+    SET unread_count = v_group.total_unread,
+        updated_at   = NOW()
+    WHERE id = v_survivor
+      AND NOT EXISTS (SELECT 1 FROM messages WHERE conversation_id = v_survivor);
+
+    DELETE FROM conversations WHERE id = ANY(v_losers);
+
+    v_merged := v_merged + COALESCE(array_length(v_losers, 1), 0);
+  END LOOP;
+
+  RETURN v_merged;
+END;
+$$;
+
+ALTER FUNCTION public.merge_duplicate_conversations() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.merge_duplicate_conversations() FROM PUBLIC;
+
+-- Collapse whatever duplicates exist right now.
+SELECT public.merge_duplicate_conversations();
+
+-- 2) Authoritative guarantee: one conversation per (account, contact).
+--    Every write path (inbound webhook, public-API resolver) now has a
+--    DB-level backstop, and its unique-violation handling can re-resolve
+--    the winning row instead of compounding duplicates.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_account_contact
+  ON conversations (account_id, contact_id);
+-- ============================================================
+-- 037_ecommerce_and_payments.sql — Shopify/WooCommerce and Payments Integration
+-- ============================================================
+
+-- Ecommerce Integrations Configuration Table
+CREATE TABLE IF NOT EXISTS public.ecommerce_integrations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL UNIQUE REFERENCES public.organizations(id) ON DELETE CASCADE,
+  shopify_shop_url TEXT,
+  shopify_access_token TEXT, -- Encrypted access token
+  woocommerce_store_url TEXT,
+  woocommerce_consumer_key TEXT,
+  woocommerce_consumer_secret TEXT, -- Encrypted consumer secret
+  abandoned_cart_enabled BOOLEAN NOT NULL DEFAULT false,
+  abandoned_cart_message TEXT NOT NULL DEFAULT 'Hi {{name}}, we noticed you left items in your cart. Complete your purchase here: {{checkout_url}}',
+  tracking_alerts_enabled BOOLEAN NOT NULL DEFAULT false,
+  tracking_message TEXT NOT NULL DEFAULT 'Hi {{name}}, your order has been shipped! Tracking number: {{tracking_number}}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS on ecommerce_integrations
+ALTER TABLE public.ecommerce_integrations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS ecommerce_integrations_select ON public.ecommerce_integrations;
+CREATE POLICY ecommerce_integrations_select ON public.ecommerce_integrations
+  FOR SELECT USING (public.is_organization_member(organization_id));
+
+DROP POLICY IF EXISTS ecommerce_integrations_modify ON public.ecommerce_integrations;
+CREATE POLICY ecommerce_integrations_modify ON public.ecommerce_integrations
+  FOR ALL USING (public.is_organization_member(organization_id, 'admin'))
+  WITH CHECK (public.is_organization_member(organization_id, 'admin'));
+
+-- Payment Settings Configuration Table (VPA and keys)
+CREATE TABLE IF NOT EXISTS public.payment_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL UNIQUE REFERENCES public.organizations(id) ON DELETE CASCADE,
+  razorpay_key_id TEXT,
+  razorpay_key_secret TEXT, -- Encrypted client secret
+  upi_vpa TEXT,
+  upi_name TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS on payment_settings
+ALTER TABLE public.payment_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS payment_settings_select ON public.payment_settings;
+CREATE POLICY payment_settings_select ON public.payment_settings
+  FOR SELECT USING (public.is_organization_member(organization_id));
+
+DROP POLICY IF EXISTS payment_settings_modify ON public.payment_settings;
+CREATE POLICY payment_settings_modify ON public.payment_settings
+  FOR ALL USING (public.is_organization_member(organization_id, 'admin'))
+  WITH CHECK (public.is_organization_member(organization_id, 'admin'));
+
+-- Payment Requests Audit Table
+CREATE TABLE IF NOT EXISTS public.payment_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  conversation_id UUID NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
+  contact_id UUID NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,
+  amount NUMERIC(10, 2) NOT NULL,
+  description TEXT,
+  payment_method TEXT NOT NULL, -- 'razorpay' | 'upi'
+  payment_link_id TEXT, -- Razorpay Payment Link ID
+  payment_url TEXT, -- UPI URI or Razorpay checkout short URL
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'paid' | 'expired'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS on payment_requests
+ALTER TABLE public.payment_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS payment_requests_select ON public.payment_requests;
+CREATE POLICY payment_requests_select ON public.payment_requests
+  FOR SELECT USING (public.is_organization_member(organization_id));
+
+DROP POLICY IF EXISTS payment_requests_modify ON public.payment_requests;
+CREATE POLICY payment_requests_modify ON public.payment_requests
+  FOR ALL USING (public.is_organization_member(organization_id, 'admin'))
+  WITH CHECK (public.is_organization_member(organization_id, 'admin'));
+
+-- Triggers to automatically update updated_at
+DROP TRIGGER IF EXISTS set_updated_at ON public.ecommerce_integrations;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.ecommerce_integrations
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS set_updated_at ON public.payment_settings;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.payment_settings
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS set_updated_at ON public.payment_requests;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.payment_requests
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- ============================================================
+-- 031_ai_reply_slot_grant.sql — fix: AI auto-reply never fires
+--
+-- Migration 029 created `claim_ai_reply_slot(uuid, integer)` as a
+-- SECURITY DEFINER function but never GRANTed EXECUTE on it — the only
+-- function in the schema missing its grant (cf. 007, 012, 018, 019,
+-- 025, 030, which all grant EXECUTE explicitly).
+--
+-- SECURITY DEFINER changes the privileges a function runs *with*, not
+-- who may *call* it: the caller still needs EXECUTE. On Postgres
+-- instances where the default PUBLIC execute privilege on public-schema
+-- functions has been revoked (standard on hardened / self-hosted
+-- Supabase), `service_role` therefore cannot invoke it. The AI
+-- auto-reply path runs entirely under the service-role client (the
+-- inbound webhook has no auth.uid()), so `db.rpc('claim_ai_reply_slot')`
+-- fails with permission-denied, the caller bails before sending, and the
+-- bot silently never answers ANY inbound message — while the Playground
+-- (which never claims a slot) keeps working. See issue #345.
+--
+-- Only the service role ever claims a slot, so we grant to it alone —
+-- matching the increment-counter precedent in 007 / 012, and never
+-- exposing a counter-mutating function to end users.
+--
+-- Idempotent — GRANT is a no-op when the privilege already exists.
+-- ============================================================
+
+GRANT EXECUTE ON FUNCTION public.claim_ai_reply_slot(uuid, integer) TO service_role;
+-- ============================================================
+-- 032_fix_ai_knowledge_membership.sql — stop cross-account KB
+--                                        reads (GHSA-fg5p-2qc3-jmxr, H2)
+--
+-- The problem
+--
+--   `match_ai_knowledge_fts` and `match_ai_knowledge_semantic`
+--   (migration 030) are SECURITY DEFINER, so they bypass RLS. They
+--   filter only on the caller-supplied `p_account_id` and never
+--   call `is_account_member()`, yet they are GRANTed to
+--   `authenticated`. The 030 header assumed only the service-role
+--   bot would call them, but any logged-in user can hit PostgREST
+--   directly with a foreign `p_account_id` and read another
+--   tenant's knowledge base:
+--
+--     POST /rest/v1/rpc/match_ai_knowledge_fts
+--       { "p_account_id": "<victim>", "p_query": "price",
+--         "p_match_count": 1000 }
+--
+-- The fix
+--
+--   Recreate both functions as SECURITY INVOKER — the only change
+--   is the security mode; the bodies are byte-for-byte the same.
+--   The existing SELECT policy
+--     ai_knowledge_chunks_select = is_account_member(account_id)
+--   then governs `authenticated` callers, so a foreign
+--   `p_account_id` returns zero rows, while the auto-reply bot
+--   (service_role) still bypasses RLS and works unchanged. This
+--   mirrors the deliberate SECURITY INVOKER choice in
+--   `filter_contacts_by_tags` (migration 025).
+--
+--   The legitimate draft path already passes the caller's *own*
+--   accountId (see src/lib/ai/knowledge.ts → retrieveKnowledge),
+--   so it keeps returning that account's chunks under RLS.
+--
+-- NOTE FOR MAINTAINER
+--
+--   This migration was not run against a live database. Validate
+--   the two checks at the bottom in your own environment. If you
+--   would rather keep these SECURITY DEFINER, the alternative is to
+--   add `AND (auth.role() = 'service_role' OR
+--   is_account_member(p_account_id))` to each WHERE clause instead.
+-- ============================================================
+
+-- Lexical: full-text rank. Body unchanged from migration 030 —
+-- only SECURITY DEFINER → SECURITY INVOKER differs.
+CREATE OR REPLACE FUNCTION public.match_ai_knowledge_fts(
+  p_account_id  uuid,
+  p_query       text,
+  p_match_count integer
+)
+RETURNS TABLE (id uuid, content text, rank real) AS $$
+  SELECT c.id,
+         c.content,
+         ts_rank(c.fts, plainto_tsquery('simple', p_query)) AS rank
+  FROM ai_knowledge_chunks c
+  WHERE c.account_id = p_account_id
+    AND c.fts @@ plainto_tsquery('simple', p_query)
+  ORDER BY rank DESC
+  LIMIT GREATEST(p_match_count, 0);
+$$ LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public;
+
+-- Semantic: cosine distance. Body unchanged from migration 030 —
+-- only SECURITY DEFINER → SECURITY INVOKER differs.
+CREATE OR REPLACE FUNCTION public.match_ai_knowledge_semantic(
+  p_account_id      uuid,
+  p_query_embedding text,
+  p_match_count     integer
+)
+RETURNS TABLE (id uuid, content text, distance real) AS $$
+  SELECT c.id,
+         c.content,
+         (c.embedding <=> p_query_embedding::vector(1536)) AS distance
+  FROM ai_knowledge_chunks c
+  WHERE c.account_id = p_account_id
+    AND c.embedding IS NOT NULL
+  ORDER BY c.embedding <=> p_query_embedding::vector(1536)
+  LIMIT GREATEST(p_match_count, 0);
+$$ LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public;
+
+-- Re-assert the EXECUTE grants (CREATE OR REPLACE preserves them,
+-- but keep them explicit and re-runnable — mirrors migration 030).
+REVOKE ALL ON FUNCTION public.match_ai_knowledge_fts(uuid, text, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.match_ai_knowledge_fts(uuid, text, integer) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.match_ai_knowledge_semantic(uuid, text, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.match_ai_knowledge_semantic(uuid, text, integer) TO authenticated, service_role;
+
+-- ============================================================
+-- Manual validation (run against a live instance — no automated
+-- SQL test harness exists in this repo):
+--
+--   1. As a non-member JWT, calling either RPC with a foreign
+--      p_account_id must return zero rows:
+--        POST /rest/v1/rpc/match_ai_knowledge_fts
+--          { "p_account_id": "<other-account>", "p_query": "price",
+--            "p_match_count": 1000 }              -> []
+--   2. The draft flow (own accountId, authenticated) and the
+--      auto-reply bot (service_role) must still return the
+--      account's own chunks.
+-- ============================================================
+-- ============================================================
+-- 033_ai_reply_polish.sql — AI reply assistant polish
+--
+-- Follow-ups to 029_ai_reply / 030_ai_knowledge that make the
+-- auto-reply bot visible and controllable from the inbox, complete the
+-- handoff, and record token spend:
+--
+--   1. messages.ai_generated       — marks a reply the bot sent (vs a
+--                                     deterministic Flow/bot send), so
+--                                     the inbox can badge it "AI".
+--   2. ai_configs.handoff_agent_id — where a handed-off conversation is
+--                                     routed. NULL = leave unassigned
+--                                     (drop into the shared queue).
+--   3. conversations.ai_handoff_summary
+--                                  — a short internal note the bot writes
+--                                    when it hands off, surfaced to the
+--                                    agent who takes over.
+--   4. ai_usage_log                — per-run provider token usage, for
+--                                    cost visibility on the account's BYO
+--                                    key. Written by the service role from
+--                                    the draft route + auto-reply bot.
+--
+-- Idempotent — safe to run multiple times.
+-- ============================================================
+
+-- ============================================================
+-- 1. Mark AI-generated messages.
+--
+-- Auto-replies are inserted as sender_type='bot' (same as Flow sends);
+-- this column is the only thing that distinguishes an LLM reply from a
+-- deterministic one, so the inbox can show the "AI" badge on the right
+-- bubbles only.
+-- ============================================================
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS ai_generated boolean NOT NULL DEFAULT false;
+
+-- ============================================================
+-- 2. Handoff routing target + 3. handoff summary.
+-- ============================================================
+ALTER TABLE ai_configs
+  ADD COLUMN IF NOT EXISTS handoff_agent_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+
+ALTER TABLE conversations
+  ADD COLUMN IF NOT EXISTS ai_handoff_summary text;
+
+-- ============================================================
+-- 4. Per-run token-usage log.
+--
+-- One row per LLM call (draft or auto-reply). Best-effort: the writer
+-- never blocks a reply on a failed insert. Kept append-only; prune with
+-- a scheduled job if it grows (an active account writes a handful of
+-- rows per conversation).
+--
+-- RLS: admin+ read (spend is billing-class, not something a viewer/agent
+-- needs). Writes come from the service-role client (webhook + route),
+-- which bypasses RLS, so there is no INSERT policy for `authenticated`.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ai_usage_log (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id        uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  conversation_id   uuid REFERENCES conversations(id) ON DELETE SET NULL,
+  -- 'auto_reply' | 'draft' — which surface spent the tokens.
+  mode              text NOT NULL CHECK (mode IN ('auto_reply', 'draft')),
+  provider          text NOT NULL CHECK (provider IN ('openai', 'anthropic')),
+  model             text NOT NULL,
+  prompt_tokens     integer NOT NULL DEFAULT 0,
+  completion_tokens integer NOT NULL DEFAULT 0,
+  total_tokens      integer NOT NULL DEFAULT 0,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+
+-- Account-scoped, newest-first reads (usage dashboards, "spend this
+-- month") — the only access pattern.
+CREATE INDEX IF NOT EXISTS idx_ai_usage_log_account_created
+  ON ai_usage_log(account_id, created_at DESC);
+
+ALTER TABLE ai_usage_log ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: admin+ only (spend visibility is settings/billing-class).
+DROP POLICY IF EXISTS ai_usage_log_select ON ai_usage_log;
+CREATE POLICY ai_usage_log_select ON ai_usage_log FOR SELECT
+  USING (is_account_member(account_id, 'admin'));
+
+-- No INSERT/UPDATE/DELETE policies for `authenticated`: the log is
+-- written exclusively by the service role (webhook + draft route) and
+-- is never mutated from the client.
+-- ============================================================
+-- 034_fix_profiles_update_rls.sql — lock down privilege columns
+--                                    on profiles (GHSA-fg5p-2qc3-jmxr, C1)
+--
+-- NOTE: renamed from 031 → 034 to resolve a duplicate migration version.
+-- The 031 slot was already taken by 031_ai_reply_slot_grant.sql (#345),
+-- so shipping this as 031 too made a clean `supabase db` apply fail with
+-- a duplicate schema_migrations key (SQLSTATE 23505). This migration is
+-- idempotent (DROP POLICY IF EXISTS / CREATE OR REPLACE) and independent
+-- of the AI tables, so re-sequencing it after 033 is safe.
+--
+-- The problem
+--
+--   The `profiles_update` RLS policy from migration 017 gates on
+--   `auth.uid() = user_id` only — it lets a user edit their *own*
+--   row, which is correct for self-service fields (full_name,
+--   avatar). But `account_role` and `account_id` also live on
+--   `profiles`, and they are the source of truth for
+--   `is_account_member()`. RLS constrains *which rows* you may
+--   update, not *which columns*, and no column-level GRANT or
+--   trigger guards them. So the normal `authenticated` browser
+--   client can self-serve a privilege escalation / tenant move:
+--
+--     -- viewer self-promotes to owner of the shared account
+--     UPDATE profiles SET account_role = 'owner' WHERE user_id = auth.uid();
+--     -- attacker relocates into a victim tenant
+--     UPDATE profiles SET account_id = '<victim>' WHERE user_id = auth.uid();
+--
+--   Both pass the WITH CHECK because `user_id` is unchanged.
+--
+-- The fix
+--
+--   A BEFORE UPDATE trigger that rejects any change to
+--   `account_role` / `account_id` when the caller is the
+--   `authenticated` role (the browser). The legitimate writers are
+--   unaffected:
+--     - handle_new_user + the 018/019 member/invitation RPCs are
+--       SECURITY DEFINER owned by `postgres`, so `current_user` is
+--       `postgres`, not `authenticated`.
+--     - the server backend runs as `service_role`.
+--   Self-service edits that leave both columns untouched (the
+--   IS DISTINCT FROM checks are false) also pass through freely.
+--
+--   Membership stays owned by the supervised RPCs (018/019), which
+--   is exactly the model migration 018's header describes.
+--
+-- NOTE FOR MAINTAINER
+--
+--   `current_user` is the reliable discriminator here because every
+--   sanctioned writer runs as postgres (DEFINER) or service_role,
+--   and PostgREST's browser clients run as `authenticated`. If you
+--   ever add a NON-definer RPC or a new role that must write these
+--   columns, extend the guard's role check accordingly. Validate in
+--   your own environment before relying on this (see the checks at
+--   the bottom); this migration was not run against a live database.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.enforce_profile_privilege_columns()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF (NEW.account_role IS DISTINCT FROM OLD.account_role
+      OR NEW.account_id IS DISTINCT FROM OLD.account_id)
+     AND current_user = 'authenticated'
+  THEN
+    RAISE EXCEPTION
+      'account_role and account_id cannot be changed directly; use the account member/invitation RPCs'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+ALTER FUNCTION public.enforce_profile_privilege_columns() OWNER TO postgres;
+
+DROP TRIGGER IF EXISTS enforce_profile_privilege_columns ON public.profiles;
+CREATE TRIGGER enforce_profile_privilege_columns
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_profile_privilege_columns();
+
+-- ============================================================
+-- Manual validation (run against a live instance — no automated
+-- SQL test harness exists in this repo):
+--
+--   1. As a viewer/member JWT via PostgREST, both of these must
+--      return 42501 (insufficient_privilege):
+--        PATCH /rest/v1/profiles?user_id=eq.<self> { "account_role": "owner" }
+--        PATCH /rest/v1/profiles?user_id=eq.<self> { "account_id": "<other>" }
+--   2. A self-service edit that leaves both columns alone must
+--      still succeed:
+--        PATCH /rest/v1/profiles?user_id=eq.<self> { "full_name": "New Name" }
+--   3. The member/invitation RPCs (set_member_role,
+--      transfer_account_ownership, redeem_invitation) must still
+--      succeed — they run SECURITY DEFINER as postgres.
+-- ============================================================
+-- ============================================================
+-- 035_interactive_messages.sql
+--
+-- Full support for WhatsApp interactive messages (reply buttons +
+-- list messages) beyond the Flows subsystem.
+--
+--   1. messages.interactive_payload — the structured payload of an
+--      OUTBOUND interactive message (buttons / list) so it round-trips:
+--      the thread can re-render the buttons/rows we sent, not just the
+--      body text. Migration 010 already added 'interactive' to the
+--      content_type CHECK and the inbound `interactive_reply_id`
+--      column, so no CHECK change is needed here.
+--
+--   2. quick_replies — reusable snippets (plain text OR a saved
+--      interactive message) an agent can insert from the inbox
+--      composer. Account-scoped, same tenancy model as automations.
+-- ============================================================
+
+-- 1. Outbound interactive payload -----------------------------
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS interactive_payload JSONB;
+
+-- 2. Quick replies --------------------------------------------
+CREATE TABLE IF NOT EXISTS quick_replies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  -- Tenancy. Every member of the account shares its quick replies.
+  account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  -- Author / audit only — never used for tenancy isolation.
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  -- 'text' snippets carry `content_text`; 'interactive' snippets carry
+  -- `interactive_payload` (validated app-side against Meta's limits).
+  kind TEXT NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'interactive')),
+  content_text TEXT,
+  interactive_payload JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_quick_replies_account ON quick_replies(account_id);
+
+ALTER TABLE quick_replies ENABLE ROW LEVEL SECURITY;
+
+-- Account-scoped policies mirroring automations (see 017): any member
+-- can read; agent+ can create / edit / delete.
+DROP POLICY IF EXISTS quick_replies_select ON quick_replies;
+DROP POLICY IF EXISTS quick_replies_insert ON quick_replies;
+DROP POLICY IF EXISTS quick_replies_update ON quick_replies;
+DROP POLICY IF EXISTS quick_replies_delete ON quick_replies;
+CREATE POLICY quick_replies_select ON quick_replies FOR SELECT
+  USING (is_account_member(account_id));
+CREATE POLICY quick_replies_insert ON quick_replies FOR INSERT
+  WITH CHECK (is_account_member(account_id, 'agent'));
+CREATE POLICY quick_replies_update ON quick_replies FOR UPDATE
+  USING (is_account_member(account_id, 'agent'));
+CREATE POLICY quick_replies_delete ON quick_replies FOR DELETE
+  USING (is_account_member(account_id, 'agent'));
+
+DROP TRIGGER IF EXISTS set_updated_at ON quick_replies;
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON quick_replies
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- ============================================================
+-- 043_account_type_reseller.sql
+-- Adds two-tier account type system (user / reseller) and
+-- the supporting tables for the Reseller Program.
+-- ============================================================
+
+-- 1. account_type on organizations
+-- ─────────────────────────────────────────────────────────────
+ALTER TABLE public.organizations
+  ADD COLUMN IF NOT EXISTS account_type TEXT NOT NULL DEFAULT 'user'
+    CHECK (account_type IN ('user', 'reseller'));
+
+-- 2. reseller_settings — white-label branding + AM details
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.reseller_settings (
+  organization_id  UUID PRIMARY KEY
+    REFERENCES public.organizations(id) ON DELETE CASCADE,
+  brand_name        TEXT,
+  brand_logo_url    TEXT,
+  accent_color      TEXT NOT NULL DEFAULT '#25D366',
+  support_email     TEXT,
+  support_phone     TEXT,
+  custom_domain     TEXT,
+  -- Assigned account manager (set by platform admin)
+  manager_name      TEXT,
+  manager_email     TEXT,
+  -- % markup applied on top of platform credit costs
+  credit_margin_pct NUMERIC(5,2) NOT NULL DEFAULT 0
+    CHECK (credit_margin_pct >= 0 AND credit_margin_pct <= 100),
+  -- Wallet balance available to distribute to clients
+  wallet_balance    NUMERIC(14,2) NOT NULL DEFAULT 0,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 3. reseller_clients — sub-accounts under a reseller
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.reseller_clients (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reseller_org_id  UUID NOT NULL
+    REFERENCES public.organizations(id) ON DELETE CASCADE,
+  client_org_id    UUID NOT NULL
+    REFERENCES public.organizations(id) ON DELETE CASCADE,
+  -- Credit balance allocated to this client by the reseller
+  credit_balance   NUMERIC(14,2) NOT NULL DEFAULT 0,
+  status           TEXT NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active', 'suspended')),
+  invited_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  accepted_at      TIMESTAMPTZ,
+  UNIQUE (reseller_org_id, client_org_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reseller_clients_reseller
+  ON public.reseller_clients(reseller_org_id);
+CREATE INDEX IF NOT EXISTS idx_reseller_clients_client
+  ON public.reseller_clients(client_org_id);
+
+-- 4. reseller_invites — token-based invite links
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.reseller_invites (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reseller_org_id  UUID NOT NULL
+    REFERENCES public.organizations(id) ON DELETE CASCADE,
+  token            TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(24), 'hex'),
+  email            TEXT,  -- optional; pre-fills the signup form
+  expires_at       TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+  accepted_at      TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 5. credit_transactions — audit log for credit top-ups / usage
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.credit_transactions (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id  UUID NOT NULL
+    REFERENCES public.organizations(id) ON DELETE CASCADE,
+  reseller_org_id  UUID
+    REFERENCES public.organizations(id) ON DELETE SET NULL,
+  type             TEXT NOT NULL
+    CHECK (type IN ('topup', 'usage', 'adjustment', 'refund')),
+  amount           NUMERIC(14,2) NOT NULL,  -- positive = credit, negative = debit
+  currency         TEXT NOT NULL DEFAULT 'BDT',
+  payment_reference TEXT,
+  description      TEXT,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_org
+  ON public.credit_transactions(organization_id);
+
+-- 6. RLS Policies
+-- ─────────────────────────────────────────────────────────────
+ALTER TABLE public.reseller_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reseller_clients  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reseller_invites  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.credit_transactions ENABLE ROW LEVEL SECURITY;
+
+-- reseller_settings: readable + writable by org members (admin+)
+CREATE POLICY "reseller_settings_select" ON public.reseller_settings
+  FOR SELECT USING (
+    public.is_organization_member(organization_id, 'viewer')
+  );
+
+CREATE POLICY "reseller_settings_upsert" ON public.reseller_settings
+  FOR ALL USING (
+    public.is_organization_member(organization_id, 'admin')
+  );
+
+-- reseller_clients: reseller org members can see their clients
+CREATE POLICY "reseller_clients_select" ON public.reseller_clients
+  FOR SELECT USING (
+    public.is_organization_member(reseller_org_id, 'viewer')
+  );
+
+CREATE POLICY "reseller_clients_manage" ON public.reseller_clients
+  FOR ALL USING (
+    public.is_organization_member(reseller_org_id, 'admin')
+  );
+
+-- reseller_invites: reseller org members
+CREATE POLICY "reseller_invites_select" ON public.reseller_invites
+  FOR SELECT USING (
+    public.is_organization_member(reseller_org_id, 'viewer')
+  );
+
+CREATE POLICY "reseller_invites_manage" ON public.reseller_invites
+  FOR ALL USING (
+    public.is_organization_member(reseller_org_id, 'admin')
+  );
+
+-- credit_transactions: org members can read their own transactions
+CREATE POLICY "credit_transactions_select" ON public.credit_transactions
+  FOR SELECT USING (
+    public.is_organization_member(organization_id, 'viewer')
+    OR public.is_organization_member(reseller_org_id, 'viewer')
+  );
+-- ============================================================
+-- 044_healthcare_and_business_domains.sql
+-- Database schema for Healthcare (Clinic Booking) and General Business modules.
+-- Adds tables, indexes, and RLS policies isolated by organization_id.
+-- ============================================================
+
+-- 1. CLINIC/HEALTHCARE MODULES
+-- ─────────────────────────────────────────────────────────────
+
+-- clinics
+CREATE TABLE IF NOT EXISTS public.clinics (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  clinic_name TEXT NOT NULL,
+  clinic_type TEXT,
+  clinic_description TEXT,
+  phone TEXT,
+  whatsapp_number TEXT,
+  email TEXT,
+  website TEXT,
+  address TEXT,
+  city TEXT,
+  state TEXT,
+  pincode TEXT,
+  google_map_link TEXT,
+  date_exceptions JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- clinic_timings
+CREATE TABLE IF NOT EXISTS public.clinic_timings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  clinic_id UUID NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
+  day_name TEXT NOT NULL, -- e.g., 'Monday', 'Tuesday'
+  opening_time TEXT, -- '09:00'
+  closing_time TEXT, -- '18:00'
+  is_closed BOOLEAN NOT NULL DEFAULT FALSE,
+  lunch_break_start TEXT, -- '13:00'
+  lunch_break_end TEXT, -- '14:00'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(clinic_id, day_name)
+);
+
+-- doctors
+CREATE TABLE IF NOT EXISTS public.doctors (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  clinic_id UUID NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
+  doctor_name TEXT NOT NULL,
+  specialization TEXT,
+  qualification TEXT,
+  experience TEXT,
+  available_days JSONB DEFAULT '[]'::jsonb, -- e.g., ["Monday", "Tuesday"]
+  available_start_time TEXT, -- '09:00'
+  available_end_time TEXT, -- '17:00'
+  consultation_fee NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+  languages_spoken TEXT,
+  profile_photo TEXT,
+  weekly_slots JSONB DEFAULT '{}'::jsonb,
+  date_exceptions JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- clinic_services
+CREATE TABLE IF NOT EXISTS public.clinic_services (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  clinic_id UUID NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
+  service_name TEXT NOT NULL,
+  description TEXT,
+  starting_price NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+  duration INTEGER NOT NULL DEFAULT 30, -- in minutes
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- clinic_faqs
+CREATE TABLE IF NOT EXISTS public.clinic_faqs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  clinic_id UUID NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  keywords TEXT, -- comma separated terms
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- appointments
+CREATE TABLE IF NOT EXISTS public.appointments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  clinic_id UUID NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
+  contact_id UUID NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,
+  doctor_id UUID REFERENCES public.doctors(id) ON DELETE SET NULL,
+  appointment_date DATE NOT NULL,
+  appointment_time TEXT NOT NULL, -- '09:30'
+  status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+  reminders_sent JSONB DEFAULT '[]'::jsonb,
+  feedback_sent BOOLEAN NOT NULL DEFAULT FALSE,
+  followup_sent BOOLEAN NOT NULL DEFAULT FALSE,
+  patient_name TEXT,
+  patient_age TEXT,
+  reason_for_visit TEXT,
+  sheets_synced BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- patient_intakes
+CREATE TABLE IF NOT EXISTS public.patient_intakes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  clinic_id UUID NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
+  contact_id UUID NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,
+  appointment_id UUID REFERENCES public.appointments(id) ON DELETE SET NULL,
+  symptoms TEXT,
+  allergies TEXT,
+  current_medications TEXT,
+  medical_history TEXT,
+  urgency_level TEXT, -- 'emergency', 'routine'
+  triage_result JSONB DEFAULT '{}'::jsonb,
+  collected_via TEXT NOT NULL DEFAULT 'whatsapp',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- patient_feedback
+CREATE TABLE IF NOT EXISTS public.patient_feedback (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  clinic_id UUID NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
+  contact_id UUID NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,
+  appointment_id UUID REFERENCES public.appointments(id) ON DELETE SET NULL,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  feedback_text TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- clinic_ai_settings
+CREATE TABLE IF NOT EXISTS public.clinic_ai_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  clinic_id UUID NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE UNIQUE,
+  ai_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  ai_tone TEXT NOT NULL DEFAULT 'polite',
+  supported_languages JSONB DEFAULT '["English", "Hindi"]'::jsonb,
+  greeting_message TEXT,
+  after_hours_message TEXT,
+  escalation_keywords JSONB DEFAULT '["agent", "human", "talk to agent"]'::jsonb,
+  emergency_keywords JSONB DEFAULT '["chest pain", "heart attack", "accident", "bleeding"]'::jsonb,
+  human_handover_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2. GENERAL BUSINESS MODULE
+-- ─────────────────────────────────────────────────────────────
+
+-- business_profiles
+CREATE TABLE IF NOT EXISTS public.business_profiles (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE UNIQUE,
+  business_type TEXT NOT NULL, -- 'hotel', 'education', 'realestate', 'retail'
+  business_name TEXT,
+  phone TEXT,
+  whatsapp_number TEXT,
+  email TEXT,
+  website TEXT,
+  address TEXT,
+  city TEXT,
+  state TEXT,
+  pincode TEXT,
+  google_map_link TEXT,
+  description TEXT,
+  institution_type TEXT,
+  property_type TEXT,
+  working_hours JSONB DEFAULT '{}'::jsonb,
+  date_exceptions JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- business_services
+CREATE TABLE IF NOT EXISTS public.business_services (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  business_id UUID NOT NULL REFERENCES public.business_profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC(12,2),
+  duration_minutes INTEGER,
+  category TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- business_staff
+CREATE TABLE IF NOT EXISTS public.business_staff (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  business_id UUID NOT NULL REFERENCES public.business_profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  role TEXT,
+  specialization TEXT,
+  qualification TEXT,
+  phone TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  extra_info JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- business_faqs
+CREATE TABLE IF NOT EXISTS public.business_faqs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  business_id UUID NOT NULL REFERENCES public.business_profiles(id) ON DELETE CASCADE,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  keywords TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- business_ai_settings
+CREATE TABLE IF NOT EXISTS public.business_ai_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  business_id UUID NOT NULL REFERENCES public.business_profiles(id) ON DELETE CASCADE UNIQUE,
+  ai_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  ai_tone TEXT NOT NULL DEFAULT 'polite and professional',
+  supported_languages JSONB DEFAULT '["English", "Hindi"]'::jsonb,
+  greeting_message TEXT,
+  after_hours_message TEXT,
+  escalation_keywords JSONB DEFAULT '["agent", "human"]'::jsonb,
+  human_handover_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- business_enquiries
+CREATE TABLE IF NOT EXISTS public.business_enquiries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  business_id UUID NOT NULL REFERENCES public.business_profiles(id) ON DELETE CASCADE,
+  contact_id UUID REFERENCES public.contacts(id) ON DELETE SET NULL,
+  contact_name TEXT,
+  contact_phone TEXT,
+  enquiry_type TEXT, -- 'booking', 'admission', 'pricing'
+  preferred_date DATE,
+  preferred_time TEXT, -- '14:00'
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled')),
+  source TEXT NOT NULL DEFAULT 'whatsapp',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- business_ai_logs
+CREATE TABLE IF NOT EXISTS public.business_ai_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  business_id UUID NOT NULL REFERENCES public.business_profiles(id) ON DELETE CASCADE,
+  contact_id UUID REFERENCES public.contacts(id) ON DELETE SET NULL,
+  user_message TEXT,
+  ai_response TEXT,
+  detected_intent TEXT,
+  confidence_score NUMERIC(3,2),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 3. INDEXES ON organization_id
+-- ─────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_clinics_org ON public.clinics(organization_id);
+CREATE INDEX IF NOT EXISTS idx_clinic_timings_org ON public.clinic_timings(organization_id);
+CREATE INDEX IF NOT EXISTS idx_doctors_org ON public.doctors(organization_id);
+CREATE INDEX IF NOT EXISTS idx_clinic_services_org ON public.clinic_services(organization_id);
+CREATE INDEX IF NOT EXISTS idx_clinic_faqs_org ON public.clinic_faqs(organization_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_org ON public.appointments(organization_id);
+CREATE INDEX IF NOT EXISTS idx_patient_intakes_org ON public.patient_intakes(organization_id);
+CREATE INDEX IF NOT EXISTS idx_patient_feedback_org ON public.patient_feedback(organization_id);
+CREATE INDEX IF NOT EXISTS idx_clinic_ai_settings_org ON public.clinic_ai_settings(organization_id);
+
+CREATE INDEX IF NOT EXISTS idx_business_profiles_org ON public.business_profiles(organization_id);
+CREATE INDEX IF NOT EXISTS idx_business_services_org ON public.business_services(organization_id);
+CREATE INDEX IF NOT EXISTS idx_business_staff_org ON public.business_staff(organization_id);
+CREATE INDEX IF NOT EXISTS idx_business_faqs_org ON public.business_faqs(organization_id);
+CREATE INDEX IF NOT EXISTS idx_business_ai_settings_org ON public.business_ai_settings(organization_id);
+CREATE INDEX IF NOT EXISTS idx_business_enquiries_org ON public.business_enquiries(organization_id);
+CREATE INDEX IF NOT EXISTS idx_business_ai_logs_org ON public.business_ai_logs(organization_id);
+
+-- 4. ROW-LEVEL SECURITY POLICIES
+-- ─────────────────────────────────────────────────────────────
+
+-- Enable RLS
+ALTER TABLE public.clinics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clinic_timings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.doctors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clinic_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clinic_faqs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.patient_intakes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.patient_feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clinic_ai_settings ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.business_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_faqs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_ai_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_enquiries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_ai_logs ENABLE ROW LEVEL SECURITY;
+
+-- Define Policies
+
+-- Clinics
+CREATE POLICY clinics_select ON public.clinics FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY clinics_all ON public.clinics FOR ALL USING (public.is_organization_member(organization_id, 'admin'));
+
+-- Clinic Timings
+CREATE POLICY timings_select ON public.clinic_timings FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY timings_all ON public.clinic_timings FOR ALL USING (public.is_organization_member(organization_id, 'admin'));
+
+-- Doctors
+CREATE POLICY doctors_select ON public.doctors FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY doctors_all ON public.doctors FOR ALL USING (public.is_organization_member(organization_id, 'admin'));
+
+-- Clinic Services
+CREATE POLICY services_select ON public.clinic_services FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY services_all ON public.clinic_services FOR ALL USING (public.is_organization_member(organization_id, 'admin'));
+
+-- Clinic FAQs
+CREATE POLICY faqs_select ON public.clinic_faqs FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY faqs_all ON public.clinic_faqs FOR ALL USING (public.is_organization_member(organization_id, 'agent'));
+
+-- Appointments
+CREATE POLICY appointments_select ON public.appointments FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY appointments_all ON public.appointments FOR ALL USING (public.is_organization_member(organization_id, 'agent'));
+
+-- Patient Intakes
+CREATE POLICY intakes_select ON public.patient_intakes FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY intakes_all ON public.patient_intakes FOR ALL USING (public.is_organization_member(organization_id, 'agent'));
+
+-- Patient Feedback
+CREATE POLICY feedback_select ON public.patient_feedback FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY feedback_all ON public.patient_feedback FOR ALL USING (public.is_organization_member(organization_id, 'agent'));
+
+-- Clinic AI Settings
+CREATE POLICY ai_select ON public.clinic_ai_settings FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY ai_all ON public.clinic_ai_settings FOR ALL USING (public.is_organization_member(organization_id, 'admin'));
+
+-- Business Profile
+CREATE POLICY b_profile_select ON public.business_profiles FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY b_profile_all ON public.business_profiles FOR ALL USING (public.is_organization_member(organization_id, 'admin'));
+
+-- Business Services
+CREATE POLICY b_services_select ON public.business_services FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY b_services_all ON public.business_services FOR ALL USING (public.is_organization_member(organization_id, 'admin'));
+
+-- Business Staff
+CREATE POLICY b_staff_select ON public.business_staff FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY b_staff_all ON public.business_staff FOR ALL USING (public.is_organization_member(organization_id, 'admin'));
+
+-- Business FAQs
+CREATE POLICY b_faqs_select ON public.business_faqs FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY b_faqs_all ON public.business_faqs FOR ALL USING (public.is_organization_member(organization_id, 'agent'));
+
+-- Business AI Settings
+CREATE POLICY b_ai_select ON public.business_ai_settings FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY b_ai_all ON public.business_ai_settings FOR ALL USING (public.is_organization_member(organization_id, 'admin'));
+
+-- Business Enquiries
+CREATE POLICY b_enquiries_select ON public.business_enquiries FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY b_enquiries_all ON public.business_enquiries FOR ALL USING (public.is_organization_member(organization_id, 'agent'));
+
+-- Business AI Logs
+CREATE POLICY b_ai_logs_select ON public.business_ai_logs FOR SELECT USING (public.is_organization_member(organization_id));
+CREATE POLICY b_ai_logs_all ON public.business_ai_logs FOR ALL USING (public.is_organization_member(organization_id, 'agent'));
+
+-- 5. CONVERSATION BOOKING MEMORY
+-- ─────────────────────────────────────────────────────────────
+ALTER TABLE public.conversations ADD COLUMN IF NOT EXISTS booking_stage TEXT;
+ALTER TABLE public.conversations ADD COLUMN IF NOT EXISTS booking_state JSONB DEFAULT '{}'::jsonb;
