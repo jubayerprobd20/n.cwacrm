@@ -189,11 +189,11 @@ export default function InboxPage() {
         return;
       }
 
-      const { data } = await supabase
+      const { data: configs } = await supabase
         .from("whatsapp_config")
-        .select("status, evolution_instance_status, wasender_status")
+        .select("status, evolution_instance_status, wasender_status, provider, evolution_instance_name, wasender_api_key, phone_number_id")
         .eq("account_id", accountId)
-        .maybeSingle();
+        .limit(10);
 
       const { data: waba } = await supabase
         .from("waba_connections")
@@ -201,12 +201,32 @@ export default function InboxPage() {
         .eq("organization_id", accountId)
         .maybeSingle();
 
-      const isConnected =
-        data?.status === "connected" ||
-        data?.evolution_instance_status === "open" ||
-        data?.evolution_instance_status === "connected" ||
-        data?.wasender_status === "connected" ||
-        waba?.status === "connected";
+      let isConnected =
+        waba?.status === "connected" ||
+        Boolean(
+          configs?.some(
+            (c) =>
+              c.status === "connected" ||
+              c.evolution_instance_status === "open" ||
+              c.evolution_instance_status === "connected" ||
+              c.wasender_status === "connected" ||
+              (c.provider === "evolution" && Boolean(c.evolution_instance_name)) ||
+              (c.provider === "wasender" && Boolean(c.wasender_api_key)) ||
+              Boolean(c.phone_number_id)
+          )
+        );
+
+      if (!isConnected) {
+        try {
+          const res = await fetch("/api/whatsapp/evolution", { method: "GET" });
+          const evoData = await res.json();
+          if (evoData.connected || evoData.status === "open" || evoData.status === "connected") {
+            isConnected = true;
+          }
+        } catch {
+          // ignore network error
+        }
+      }
 
       setWhatsappConnected(Boolean(isConnected));
     };

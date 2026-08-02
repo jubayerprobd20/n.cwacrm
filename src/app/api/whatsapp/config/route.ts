@@ -85,11 +85,13 @@ export async function GET() {
       )
     }
 
-    const { data: config, error: configError } = await supabase
+    const { data: configs, error: configError } = await supabase
       .from('whatsapp_config')
       .select('*')
       .eq('account_id', accountId)
-      .maybeSingle()
+      .limit(1)
+
+    const config = configs?.[0]
 
     if (configError) {
       console.error('Error fetching whatsapp_config:', configError)
@@ -111,26 +113,35 @@ export async function GET() {
     }
 
     if (config.provider === 'evolution') {
+      const evoConnected =
+        config.status === 'connected' ||
+        config.evolution_instance_status === 'open' ||
+        config.evolution_instance_status === 'connected' ||
+        Boolean(config.evolution_instance_name);
       return NextResponse.json({
-        connected: config.status === 'connected',
+        connected: evoConnected,
         provider: 'evolution',
         evolution_base_url: config.evolution_base_url,
         evolution_api_key: config.evolution_api_key,
         evolution_instance_name: config.evolution_instance_name,
         evolution_instance_status: config.evolution_instance_status || 'disconnected',
-        status: config.status || 'disconnected',
+        status: evoConnected ? 'connected' : (config.status || 'disconnected'),
       })
     }
 
     if (config.provider === 'wasender') {
+      const waConnected =
+        config.status === 'connected' ||
+        config.wasender_status === 'connected' ||
+        Boolean(config.wasender_api_key);
       return NextResponse.json({
-        connected: config.status === 'connected',
+        connected: waConnected,
         provider: 'wasender',
         wasender_base_url: config.wasender_base_url,
         wasender_api_key: config.wasender_api_key,
         wasender_device_id: config.wasender_device_id,
         wasender_status: config.wasender_status || 'disconnected',
-        status: config.status || 'disconnected',
+        status: waConnected ? 'connected' : (config.status || 'disconnected'),
       })
     }
 

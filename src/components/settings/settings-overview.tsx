@@ -126,9 +126,9 @@ export function SettingsOverview({
         const [legacyRow, wabaRow] = await Promise.allSettled([
           supabase
             .from('whatsapp_config')
-            .select('phone_number_id, provider, status, evolution_instance_status, wasender_status')
+            .select('phone_number_id, provider, status, evolution_instance_status, wasender_status, evolution_instance_name, wasender_api_key')
             .eq('account_id', acctId)
-            .maybeSingle(),
+            .limit(10),
           supabase
             .from('waba_connections')
             .select('phone_number_id, status')
@@ -141,21 +141,25 @@ export function SettingsOverview({
         const wabaConnected = wabaRow.status === 'fulfilled' && wabaRow.value.data?.status === 'connected';
         const wabaConfigured = wabaRow.status === 'fulfilled' && !!wabaRow.value.data?.phone_number_id;
 
-        const legacyData = legacyRow.status === 'fulfilled' ? legacyRow.value.data : null;
-        const evoConnected =
-          legacyData?.evolution_instance_status === 'open' ||
-          legacyData?.evolution_instance_status === 'connected' ||
-          legacyData?.status === 'connected';
-        const waSenderConnected = legacyData?.wasender_status === 'connected';
+        const legacyRows = legacyRow.status === 'fulfilled' && Array.isArray(legacyRow.value.data) ? legacyRow.value.data : [];
+        const evoConnected = legacyRows.some(
+          (r) =>
+            r.evolution_instance_status === 'open' ||
+            r.evolution_instance_status === 'connected' ||
+            r.status === 'connected' ||
+            (r.provider === 'evolution' && Boolean(r.evolution_instance_name)) ||
+            (r.provider === 'wasender' && Boolean(r.wasender_api_key)) ||
+            Boolean(r.phone_number_id)
+        );
 
-        if (wabaConnected || evoConnected || waSenderConnected) {
+        if (wabaConnected || evoConnected) {
           setWhatsapp({
             configured: true,
             connected: true,
           });
         } else {
           // Check legacy config health
-          const legacyConfigured = !!legacyData?.phone_number_id || !!legacyData?.provider;
+          const legacyConfigured = legacyRows.some((r) => !!r.phone_number_id || !!r.provider);
           let legacyConnected = false;
           if (legacyConfigured) {
             try {
