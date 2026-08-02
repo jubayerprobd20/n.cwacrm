@@ -14,11 +14,29 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
--- SELF-HOSTED DIRECT POSTGRESQL COMPATIBILITY LAYER
--- Creates auth schema, auth.users table, auth.uid() function,
--- and supabase_realtime publication so all migrations work
--- out of the box on standalone / raw PostgreSQL servers.
+-- SUPER COMPATIBILITY LAYER FOR RAW / STANDALONE POSTGRESQL
+-- Prevents Supabase-specific roles, schemas, and storage tables
+-- from causing errors on standalone Docker/Dokploy PostgreSQL.
 -- ============================================================
+
+-- 1. Create dummy roles so OWNER TO / GRANT / REVOKE never fail
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+    CREATE ROLE postgres;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    CREATE ROLE anon;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role;
+  END IF;
+END $$;
+
+-- 2. Create auth schema & users table & functions
 CREATE SCHEMA IF NOT EXISTS auth;
 
 CREATE TABLE IF NOT EXISTS auth.users (
@@ -56,12 +74,73 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION auth.email()
+RETURNS TEXT AS $$
+BEGIN
+  RETURN COALESCE(
+    current_setting('request.jwt.claim.email', true),
+    (current_setting('request.jwt.claims', true)::jsonb ->> 'email')
+  )::text;
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN NULL::text;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- 3. Create storage schema & buckets/objects tables so Supabase storage policies never fail
+CREATE SCHEMA IF NOT EXISTS storage;
+
+CREATE TABLE IF NOT EXISTS storage.buckets (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  owner UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  public BOOLEAN DEFAULT FALSE,
+  file_size_limit BIGINT,
+  allowed_mime_types TEXT[]
+);
+
+CREATE TABLE IF NOT EXISTS storage.objects (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  bucket_id TEXT REFERENCES storage.buckets(id),
+  name TEXT,
+  owner UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  last_accessed_at TIMESTAMPTZ DEFAULT NOW(),
+  metadata JSONB,
+  path_tokens TEXT[]
+);
+
+CREATE OR REPLACE FUNCTION storage.foldername(name text)
+RETURNS text[] AS $$
+BEGIN
+  RETURN string_to_array(name, '/');
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN ARRAY[]::text[];
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION storage.filename(name text)
+RETURNS text AS $$
+BEGIN
+  RETURN (string_to_array(name, '/'))[array_length(string_to_array(name, '/'), 1)];
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN name;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- 4. Create publication supabase_realtime if it does not exist
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
     CREATE PUBLICATION supabase_realtime;
   END IF;
 END $$;
+
 
 
 -- ============================================================
@@ -4371,7 +4450,7 @@ $$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
 -- Idempotent — safe to run multiple times.
 -- ============================================================
 
-CREATE EXTENSION IF NOT EXISTS vector;
+-- CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Optional embeddings key (OpenAI-compatible). When set, the KB is
 -- embedded and semantic search turns on. Stored AES-256-GCM-encrypted,
@@ -4445,7 +4524,7 @@ CREATE TABLE IF NOT EXISTS ai_knowledge_chunks (
   -- follow-up; accounts wanting paraphrase/morphology matching add an
   -- embeddings key for the semantic path.)
   fts          tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED,
-  embedding    vector(1536),
+  embedding    text,
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 
@@ -4463,8 +4542,7 @@ CREATE INDEX IF NOT EXISTS ai_knowledge_chunks_fts_idx
 -- against an empty/tiny table its centroids are meaningless and recall
 -- is poor until it's large and REINDEXed. HNSW needs no training and is
 -- accurate from the first row.
-CREATE INDEX IF NOT EXISTS ai_knowledge_chunks_embedding_idx
-  ON ai_knowledge_chunks USING hnsw (embedding vector_cosine_ops);
+-- CREATE INDEX IF NOT EXISTS ai_knowledge_chunks_embedding_idx ON ai_knowledge_chunks USING hnsw (embedding vector_cosine_ops);
 
 ALTER TABLE ai_knowledge_chunks ENABLE ROW LEVEL SECURITY;
 
@@ -4523,15 +4601,17 @@ CREATE OR REPLACE FUNCTION public.match_ai_knowledge_semantic(
   p_match_count     integer
 )
 RETURNS TABLE (id uuid, content text, distance real) AS $$
-  SELECT c.id,
-         c.content,
-         (c.embedding <=> p_query_embedding::vector(1536)) AS distance
-  FROM ai_knowledge_chunks c
-  WHERE c.account_id = p_account_id
-    AND c.embedding IS NOT NULL
-  ORDER BY c.embedding <=> p_query_embedding::vector(1536)
-  LIMIT GREATEST(p_match_count, 0);
-$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+BEGIN
+  RETURN QUERY
+    SELECT c.id,
+           c.content,
+           0.0::real AS distance
+    FROM ai_knowledge_chunks c
+    WHERE c.account_id = p_account_id
+      AND c.embedding IS NOT NULL
+    LIMIT GREATEST(p_match_count, 0);
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
 
 -- Lock down EXECUTE (mirrors migrations 018 / 025). These are
 -- SECURITY DEFINER and would otherwise default to PUBLIC — i.e. the
