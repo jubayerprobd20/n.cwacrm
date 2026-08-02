@@ -44,7 +44,7 @@ export function EvolutionConfigPanel({
   const [connecting, setConnecting] = useState(false);
   const [fetchingQr, setFetchingQr] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [qrCode, setQrCode] = useState<{ base64?: string; code?: string } | null>(null);
+  const [qrCode, setQrCode] = useState<{ base64?: string; code?: string; pairingCode?: string } | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
   const handleConnect = async () => {
@@ -148,9 +148,12 @@ export function EvolutionConfigPanel({
     }
   };
 
+  const pairingCodeValue =
+    qrCode?.pairingCode || (qrCode?.code && qrCode.code.length <= 16 ? qrCode.code : null);
+
   const copyPairingCode = () => {
-    if (qrCode?.code) {
-      navigator.clipboard.writeText(qrCode.code);
+    if (pairingCodeValue) {
+      navigator.clipboard.writeText(pairingCodeValue);
       setCopiedCode(true);
       toast.success('Pairing code copied to clipboard');
       setTimeout(() => setCopiedCode(false), 2000);
@@ -195,56 +198,6 @@ export function EvolutionConfigPanel({
           )}
         </div>
       </Alert>
-
-      {/* QR Code Scanner Display */}
-      {qrCode && !isConnected && (
-        <Card className="border-emerald-500/30 bg-gradient-to-b from-slate-900/80 to-slate-900/50 backdrop-blur-xl shadow-2xl">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-lg font-bold text-white flex items-center justify-center gap-2">
-              <QrCode className="size-5 text-emerald-400" />
-              Scan QR Code with WhatsApp
-            </CardTitle>
-            <CardDescription className="text-slate-400 text-sm">
-              Open WhatsApp on your phone &rarr; Linked Devices &rarr; Link a Device &rarr; Scan QR Code
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center space-y-4 pt-2">
-            {qrCode.base64 ? (
-              <div className="p-4 bg-white rounded-2xl shadow-xl border-4 border-emerald-500/20">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrCode.base64} alt="Evolution QR Code" className="size-64 object-contain" />
-              </div>
-            ) : null}
-
-            {qrCode.code ? (
-              <div className="w-full max-w-sm space-y-1.5 text-center">
-                <Label className="text-xs text-slate-400 font-medium">Or use WhatsApp Pairing Code:</Label>
-                <div className="flex items-center gap-2 bg-slate-800/80 px-4 py-2.5 rounded-xl border border-white/10">
-                  <span className="font-mono text-lg font-bold text-emerald-400 tracking-wider flex-1">
-                    {qrCode.code}
-                  </span>
-                  <Button variant="ghost" size="icon" onClick={copyPairingCode} className="size-8">
-                    {copiedCode ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4 text-slate-400" />}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="flex items-center gap-3 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleFetchQr}
-                disabled={fetchingQr}
-                className="border-white/10 bg-slate-800 hover:bg-slate-700 text-white"
-              >
-                {fetchingQr ? <Loader2 className="size-4 animate-spin mr-1" /> : <RefreshCw className="size-4 mr-1" />}
-                Refresh QR Code
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Evolution API Form */}
       <Card>
@@ -387,6 +340,69 @@ export function EvolutionConfigPanel({
           </div>
         </CardContent>
       </Card>
+
+      {/* QR Code Scanner Display (Shown below form when generated) */}
+      {qrCode && !isConnected && (
+        <Card className="border-2 border-emerald-500/40 bg-gradient-to-b from-slate-950/95 to-slate-900/90 backdrop-blur-2xl shadow-[0_0_40px_rgba(16,185,129,0.15)] animate-in fade-in-50 slide-in-from-top-4 duration-300">
+          <CardHeader className="text-center pb-3">
+            <CardTitle className="text-xl font-bold text-white flex items-center justify-center gap-2">
+              <QrCode className="size-6 text-emerald-400" />
+              Scan QR Code with WhatsApp
+            </CardTitle>
+            <CardDescription className="text-slate-300 text-sm max-w-md mx-auto">
+              Follow these simple steps on your phone to link your WhatsApp Business account:
+            </CardDescription>
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs text-slate-300">
+              <span className="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/10 font-medium">1. Open WhatsApp</span>
+              <span className="text-slate-500">&rarr;</span>
+              <span className="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/10 font-medium">2. Tap Settings/Menu</span>
+              <span className="text-slate-500">&rarr;</span>
+              <span className="px-2.5 py-1 bg-slate-800/80 rounded-lg border border-white/10 font-medium">3. Linked Devices</span>
+              <span className="text-slate-500">&rarr;</span>
+              <span className="px-2.5 py-1 bg-emerald-950/80 text-emerald-300 rounded-lg border border-emerald-500/30 font-medium">4. Link a Device &amp; Scan</span>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center space-y-5 pb-6">
+            {qrCode.base64 ? (
+              <div className="p-5 bg-white rounded-3xl shadow-2xl border-4 border-emerald-500/30 flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrCode.base64} alt="Evolution QR Code" className="size-64 object-contain" />
+              </div>
+            ) : null}
+
+            {pairingCodeValue ? (
+              <div className="w-full max-w-sm space-y-1.5 text-center">
+                <Label className="text-xs text-slate-400 font-medium">Or use WhatsApp Pairing Code:</Label>
+                <div className="flex items-center gap-2 bg-slate-800/80 px-4 py-2.5 rounded-xl border border-white/10">
+                  <span className="font-mono text-lg font-bold text-emerald-400 tracking-wider flex-1">
+                    {pairingCodeValue}
+                  </span>
+                  <Button variant="ghost" size="icon" onClick={copyPairingCode} className="size-8">
+                    {copiedCode ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4 text-slate-400" />}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <p className="text-xs text-slate-400 text-center max-w-sm">
+              Point your phone camera at this QR code. Once scanned, WhatsApp will connect instantly and update this page.
+            </p>
+
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFetchQr}
+                disabled={fetchingQr}
+                className="border-white/10 bg-slate-800 hover:bg-slate-700 text-white"
+              >
+                {fetchingQr ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <RefreshCw className="size-4 mr-1.5" />}
+                Refresh QR Code
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

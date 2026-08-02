@@ -42,14 +42,18 @@ export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>(urlSection);
 
   useEffect(() => {
-    setActiveSection(resolveSection(searchParams.get('tab')));
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      const resolved = resolveSection(tabParam);
+      setActiveSection((prev) => (prev !== resolved ? resolved : prev));
+    }
   }, [searchParams]);
 
   const go = (next: SettingsSection) => {
     setActiveSection(next);
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', next);
-    window.history.replaceState(null, '', `/settings?${params.toString()}`);
+    router.replace(`/settings?${params.toString()}`, { scroll: false });
   };
 
   // Cheap, fetch-free rail hints. The Overview landing carries the

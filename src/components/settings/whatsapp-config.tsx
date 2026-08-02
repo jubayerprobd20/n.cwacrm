@@ -160,9 +160,7 @@ export function WhatsAppConfig() {
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
-        if (!silent) {
-          setSelectedProvider(data.provider || 'meta');
-        }
+        setSelectedProvider((prev) => prev ?? (data.provider || 'meta'));
       } else {
         setConfig(null);
         setPhoneNumberId('');
@@ -171,9 +169,7 @@ export function WhatsAppConfig() {
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
-        if (!silent) {
-          setSelectedProvider('meta');
-        }
+        setSelectedProvider((prev) => prev ?? 'meta');
       }
       // Clear any stale probe result when reloading the row.
       setRegistrationProbe(null);
