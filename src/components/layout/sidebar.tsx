@@ -122,7 +122,7 @@ import { useTranslations } from "next-intl";
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
-  const { profile, profileLoading, account, accountRole, signOut } = useAuth();
+  const { profile, profileLoading, account, accountRole, signOut, isSuperAdmin } = useAuth();
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
   // Only surface the account-name strip when it actually carries
@@ -296,6 +296,26 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 </li>
               );
             })}
+
+            {isSuperAdmin && (
+              <li>
+                <Link
+                  href="/super-admin"
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors lg:py-2",
+                    pathname.startsWith("/super-admin")
+                      ? "bg-amber-500/20 text-amber-500 border border-amber-500/40 shadow-sm"
+                      : "text-amber-500/80 hover:bg-amber-500/10 hover:text-amber-500",
+                  )}
+                >
+                  <Crown className="h-4 w-4 shrink-0 text-amber-500 animate-pulse" />
+                  <span>SaaS Super Admin</span>
+                  <span className="ml-auto rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">
+                    MASTER
+                  </span>
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
 

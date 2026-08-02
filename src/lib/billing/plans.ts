@@ -50,3 +50,36 @@ export const PLAN_TIERS: Record<string, PlanTier> = {
 export function getPlanById(planId: string): PlanTier {
   return PLAN_TIERS[planId] || PLAN_TIERS.free;
 }
+
+/**
+ * Fetch dynamic plan from database if available, otherwise fallback to static PLAN_TIERS.
+ */
+export async function getDynamicPlanById(
+  planId: string,
+  supabaseClient?: { from: (table: string) => any }
+): Promise<PlanTier> {
+  try {
+    if (supabaseClient) {
+      const { data: plan } = await supabaseClient
+        .from("saas_subscription_plans")
+        .select("*")
+        .eq("id", planId)
+        .maybeSingle();
+
+      if (plan) {
+        return {
+          plan_id: plan.id,
+          name: plan.name,
+          price: plan.price_bdt,
+          message_quota: plan.message_quota,
+          contact_limit: plan.contact_limit,
+          unlimited: plan.unlimited,
+        };
+      }
+    }
+  } catch {
+    // ignore error, fall back to static
+  }
+  return getPlanById(planId);
+}
+

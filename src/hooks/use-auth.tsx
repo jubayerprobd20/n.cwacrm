@@ -35,6 +35,7 @@ interface Profile {
   beta_features: string[];
   account_id: string | null;
   account_role: AccountRole | null;
+  is_super_admin?: boolean;
 }
 
 interface AccountSummary {
@@ -102,6 +103,18 @@ interface AuthContextValue {
   canEditSettings: boolean;
   /** True if the caller can send messages and edit operational data (agent+). */
   canSendMessages: boolean;
+
+  // ----------------------------------------------------------
+  // Super Admin & Impersonation Context
+  // ----------------------------------------------------------
+  /** True if the user is a SaaS Super Admin (owner email or is_super_admin flag). */
+  isSuperAdmin: boolean;
+  /** True if the Super Admin is currently impersonating a customer workspace. */
+  isImpersonating: boolean;
+  /** Name of the currently impersonated workspace, if any. */
+  impersonatedOrgName: string | null;
+  /** Enter or exit customer workspace impersonation mode. */
+  impersonateOrganization: (orgId: string | null, orgName?: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -116,11 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  // Tracked separately from `loading`. The session settles fast (one
-  // local cookie read); the profile fetch crosses the network and
-  // settles later. Callers that gate on `profile.*` need to know which
-  // window they're in — see the type doc above.
   const [profileLoading, setProfileLoading] = useState(true);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [impersonatedOrgName, setImpersonatedOrgName] = useState<string | null>(null);
 
   // Tracks the user ID we've successfully initiated/completed fetching
   // a profile for. This prevents redundant re-fetches and toggling
@@ -135,80 +147,101 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileLoading(true);
     lastFetchedUserIdRef.current = userId;
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select(
-          "id, full_name, email, avatar_url, role, beta_features, account_id, account_role",
-        )
-        .eq("user_id", userId)
-        .maybeSingle();
+        let profileData: any = null;
+        const { data: rawData, error } = await supabase
+          .from("profiles")
+          .select(
+            "id, full_name, email, avatar_url, role, beta_features, account_id, account_role, is_super_admin",
+          )
+          .eq("user_id", userId)
+          .maybeSingle();
 
-      if (error) {
-        console.error("[AuthProvider] fetchProfile error:", error);
-        return;
-      }
-
-      if (data) {
-        // Load the account with a plain lookup by id instead of an
-        // embedded FK join. The embed (`account:accounts!inner(...)`)
-        // forces PostgREST to resolve the profiles.account_id →
-        // accounts.id relationship from its schema cache; a stale cache
-        // (common right after a migration adds the FK) makes it fail
-        // hard with PGRST200 and blanks the whole profile — the user
-        // then loses account context everywhere (issue #294). A point
-        // lookup by id needs no relationship inference, so the profile
-        // (with account_id / account_role) still resolves even if the
-        // account name lookup itself can't.
-        let accountRow: AccountSummary | null = null;
-        if (data.account_id) {
-          const { data: account, error: accountErr } = await supabase
-            .from("accounts")
-            // default_currency added in migration 021; narrowed to the
-            // USD fallback below for older schemas where it reads null.
-            .select("id, name, default_currency")
-            .eq("id", data.account_id)
+        if (error) {
+          // If column is_super_admin doesn't exist yet, retry without it
+          const { data: fallbackData, error: fallbackErr } = await supabase
+            .from("profiles")
+            .select(
+              "id, full_name, email, avatar_url, role, beta_features, account_id, account_role",
+            )
+            .eq("user_id", userId)
             .maybeSingle();
-          if (accountErr) {
-            console.error("[AuthProvider] fetchAccount error:", {
-              message: accountErr.message,
-              details: accountErr.details,
-              hint: accountErr.hint,
-              code: accountErr.code,
-            });
-          } else if (account) {
-            accountRow = {
-              id: account.id,
-              name: account.name,
-              default_currency: account.default_currency ?? DEFAULT_CURRENCY,
-            };
+          if (fallbackErr) {
+            console.error("[AuthProvider] fetchProfile error:", fallbackErr);
+            return;
           }
+          profileData = fallbackData;
+        } else {
+          profileData = rawData;
         }
 
-        // Narrow the DB enum into our AccountRole union. The DB
-        // constraint should make this unconditional, but a future
-        // migration that broadens the enum without updating TS would
-        // otherwise crash here — fall back to null and let UI gates
-        // treat the caller as least-privileged.
-        const accountRole = isAccountRole(data.account_role)
-          ? data.account_role
-          : null;
+        const data = profileData;
+        if (data) {
+          const emailLower = (data.email || "").toLowerCase();
+          const superAdminUser =
+            data.is_super_admin === true ||
+            emailLower === "nextcorebd@gmail.com" ||
+            emailLower === "jubayerprobd@gmail.com" ||
+            emailLower === "admin@nextcorebd.com";
 
-        setProfile({
-          id: data.id,
-          full_name: data.full_name,
-          email: data.email,
-          avatar_url: data.avatar_url,
-          role: data.role,
-          // `beta_features` is `NOT NULL DEFAULT ARRAY[]` in the DB, but
-          // narrow defensively in case the column hasn't been migrated yet
-          // (older deployments running 011 lazily) — `null` reads as no
-          // opt-ins, which is the safe default for any future beta gate.
-          beta_features: data.beta_features ?? [],
-          account_id: data.account_id ?? null,
-          account_role: accountRole,
-        });
-        setAccount(accountRow);
-      }
+          setIsSuperAdmin(superAdminUser);
+
+          // Check if Super Admin is impersonating a customer workspace
+          let activeAccountId = data.account_id;
+          let activeAccountRole = data.account_role;
+
+          if (superAdminUser && typeof window !== "undefined") {
+            const impOrgId = localStorage.getItem("saas_impersonate_org_id");
+            const impOrgName = localStorage.getItem("saas_impersonate_org_name");
+            if (impOrgId) {
+              activeAccountId = impOrgId;
+              activeAccountRole = "owner";
+              setIsImpersonating(true);
+              setImpersonatedOrgName(impOrgName || "Impersonated Workspace");
+            } else {
+              setIsImpersonating(false);
+              setImpersonatedOrgName(null);
+            }
+          } else {
+            setIsImpersonating(false);
+            setImpersonatedOrgName(null);
+          }
+
+          let accountRow: AccountSummary | null = null;
+          if (activeAccountId) {
+            const { data: account, error: accountErr } = await supabase
+              .from("accounts")
+              .select("id, name, default_currency")
+              .eq("id", activeAccountId)
+              .maybeSingle();
+
+            if (accountErr) {
+              console.error("[AuthProvider] fetchAccount error:", accountErr.message);
+            } else if (account) {
+              accountRow = {
+                id: account.id,
+                name: account.name,
+                default_currency: account.default_currency ?? DEFAULT_CURRENCY,
+              };
+            }
+          }
+
+          const accountRole = isAccountRole(activeAccountRole)
+            ? activeAccountRole
+            : "owner";
+
+          setProfile({
+            id: data.id,
+            full_name: data.full_name,
+            email: data.email,
+            avatar_url: data.avatar_url,
+            role: data.role,
+            beta_features: data.beta_features ?? [],
+            account_id: activeAccountId ?? null,
+            account_role: accountRole,
+            is_super_admin: superAdminUser,
+          });
+          setAccount(accountRow);
+        }
     } catch (err) {
       console.error("[AuthProvider] fetchProfile threw:", err);
     } finally {
@@ -306,6 +339,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchProfile(userId);
   }, [userId, fetchProfile]);
 
+  const impersonateOrganization = useCallback(
+    (orgId: string | null, orgName?: string | null) => {
+      if (!orgId) {
+        localStorage.removeItem("saas_impersonate_org_id");
+        localStorage.removeItem("saas_impersonate_org_name");
+        setIsImpersonating(false);
+        setImpersonatedOrgName(null);
+      } else {
+        localStorage.setItem("saas_impersonate_org_id", orgId);
+        if (orgName) {
+          localStorage.setItem("saas_impersonate_org_name", orgName);
+          setImpersonatedOrgName(orgName);
+        }
+        setIsImpersonating(true);
+      }
+      void refreshProfile();
+    },
+    [refreshProfile]
+  );
+
   // Derive the role booleans once per profile change rather than on
   // every consumer render. Cheap regardless, but the memo also gives
   // each derived value a stable identity for React.memo / useEffect
@@ -336,6 +389,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshProfile,
         account,
         defaultCurrency: account?.default_currency ?? DEFAULT_CURRENCY,
+        isSuperAdmin,
+        isImpersonating,
+        impersonatedOrgName,
+        impersonateOrganization,
         ...derived,
       }}
     >
@@ -375,6 +432,10 @@ export function useAuth(): AuthContextValue {
       canManageMembers: false,
       canEditSettings: false,
       canSendMessages: false,
+      isSuperAdmin: false,
+      isImpersonating: false,
+      impersonatedOrgName: null,
+      impersonateOrganization: () => {},
     };
   }
   return ctx;
