@@ -122,9 +122,8 @@ export async function getEvolutionConnectionState(
     const url = `${cleanBaseUrl(config.baseUrl)}/instance/connectionState/${config.instanceName}`;
     const res = await fetch(url, {
       method: 'GET',
-      headers: {
-        apikey: config.apiKey,
-      },
+      headers: { apikey: config.apiKey },
+      signal: AbortSignal.timeout(8000), // 8s timeout — don't hang Vercel serverless
     });
 
     const data = await res.json();
@@ -181,39 +180,52 @@ export async function setEvolutionWebhook(
   config: EvolutionConfig,
   webhookUrl: string
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const url = `${cleanBaseUrl(config.baseUrl)}/webhook/set/${config.instanceName}`;
-    const payload = {
-      webhook: {
-        enabled: true,
-        url: webhookUrl,
-        events: [
-          'MESSAGES_UPSERT',
-          'MESSAGES_UPDATE',
-          'CONNECTION_UPDATE',
-          'QRCODE_UPDATED',
-        ],
-      },
-    };
+  // Evolution API v2 uses a flat structure; v1 uses { webhook: { ... } }
+  // We try v2 format first, then fall back to v1 format on failure.
+  const eventsV2 = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'];
+  const eventsV1 = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'];
 
+  const payloadV2 = {
+    enabled: true,
+    url: webhookUrl,
+    webhookByEvents: false,
+    webhookBase64: false,
+    events: eventsV2,
+  };
+
+  const payloadV1 = {
+    webhook: {
+      enabled: true,
+      url: webhookUrl,
+      events: eventsV1,
+    },
+  };
+
+  const trySet = async (payload: Record<string, unknown>) => {
+    const url = `${cleanBaseUrl(config.baseUrl)}/webhook/set/${config.instanceName}`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        apikey: config.apiKey,
-        'Content-Type': 'application/json',
-      },
+      headers: { apikey: config.apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
     });
-
     const data = await res.json();
-    if (!res.ok) {
-      return {
-        success: false,
-        error: data?.error || data?.message || `HTTP ${res.status}: Failed to set webhook`,
-      };
-    }
+    return { ok: res.ok, data };
+  };
 
-    return { success: true };
+  try {
+    // Try v2 format first
+    const v2 = await trySet(payloadV2);
+    if (v2.ok) return { success: true };
+
+    // Fall back to v1 format
+    const v1 = await trySet(payloadV1);
+    if (v1.ok) return { success: true };
+
+    return {
+      success: false,
+      error: v1.data?.error || v1.data?.message || 'Failed to set webhook (both v1 and v2 formats tried)',
+    };
   } catch (err) {
     return {
       success: false,

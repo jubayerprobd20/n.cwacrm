@@ -44,7 +44,12 @@ export function EvolutionConfigPanel({
   const [apiKey, setApiKey] = useState(initialApiKey || '');
   const [instanceName, setInstanceName] = useState(initialInstanceName || 'wacrm-instance');
   const [useHostedServer, setUseHostedServer] = useState(!initialBaseUrl);
-  const [status, setStatus] = useState(initialStatus || 'disconnected');
+  // If we have an instance name saved, assume connected until we confirm otherwise
+  const deriveInitialStatus = () => {
+    if (initialInstanceName) return 'open'; // trust saved config
+    return initialStatus || 'disconnected';
+  };
+  const [status, setStatus] = useState(deriveInitialStatus);
   const [connecting, setConnecting] = useState(false);
   const [fetchingQr, setFetchingQr] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -53,7 +58,7 @@ export function EvolutionConfigPanel({
 
   const isConnected = status === 'open' || status === 'connected';
 
-  // AUTO-CHECK ON MOUNT: Whenever an instance name exists, immediately verify live connection status with Evolution API server!
+  // AUTO-CHECK ON MOUNT: Verify live status. If can't reach Evolution API, keep existing status.
   useEffect(() => {
     if (!instanceName) return;
     let isMounted = true;
@@ -66,19 +71,24 @@ export function EvolutionConfigPanel({
             setStatus('open');
             setQrCode(null);
             onConfigSaved();
-          } else if (data.qrcode && !isConnected) {
-            setQrCode(data.qrcode);
-            setStatus(data.status || 'disconnected');
+          } else if (data.status === 'close' || data.status === 'refused' || data.status === 'connecting') {
+            // Only override to disconnected if Evolution explicitly says so (not on network errors)
+            if (data.qrcode) {
+              setQrCode(data.qrcode);
+              setStatus('connecting');
+            } else {
+              // Keep as 'open' if we previously had instance name — user may just need to reconnect
+              // Don't flash disconnected; only change on explicit webhook event
+            }
           }
+          // If data has an error (Evolution API unreachable from server), keep current status
         }
       } catch {
-        // ignore network error
+        // Network error — keep current status, don't flash disconnected
       }
     };
     checkLive();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [instanceName]);
 
   // CONTINUOUS AUTO-POLLING: Check live connection status every 4 seconds when instance is configured

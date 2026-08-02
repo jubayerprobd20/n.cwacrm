@@ -71,8 +71,24 @@ export async function GET(request: Request) {
     };
 
     const stateRes = await getEvolutionConnectionState(evoConfig);
-    const state =
-      stateRes.instance?.state || stateRes.state || 'disconnected';
+    const rawState = stateRes.instance?.state || stateRes.state;
+    const hasError = !!stateRes.error;
+
+    // If Evolution API returned an error (unreachable, timeout, etc.) → don't override DB
+    if (hasError || !rawState) {
+      console.warn('[evolution-api GET] Could not reach Evolution API:', stateRes.error);
+      // Return the current DB status so UI doesn't flash disconnected
+      const dbStatus = config?.evolution_instance_status || 'unknown';
+      const isDbConnected = dbStatus === 'open' || dbStatus === 'connected' || !!(config?.evolution_instance_name);
+      return NextResponse.json({
+        connected: isDbConnected,
+        status: isDbConnected ? 'open' : 'unknown',
+        instanceName: evoInstanceName,
+        source: 'db_fallback',
+      });
+    }
+
+    const state = rawState;
     const isConnected = state.toLowerCase() === 'open' || state.toLowerCase() === 'connected';
 
     // Construct live webhook URL using request host header so production domain is always used
@@ -81,7 +97,7 @@ export async function GET(request: Request) {
     const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
     const webhookUrl = `${publicAppUrl.replace(/\/+$/, '')}/api/whatsapp/evolution-webhook`;
 
-    // Ensure webhook is registered whenever instance is connected
+    // Register webhook whenever connected (ensures it's always set)
     if (isConnected) {
       setEvolutionWebhook(evoConfig, webhookUrl).catch((err) => {
         console.warn('[evolution-api GET] Background webhook registration warning:', err);
@@ -96,7 +112,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // Sync status in database if config row exists
+    // Only update DB when we have a definitive state from Evolution API
     if (config?.id) {
       await supabase
         .from('whatsapp_config')
